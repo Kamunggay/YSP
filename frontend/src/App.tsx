@@ -31,10 +31,6 @@ import { ReservationAndHoldWorkspace } from './workspaces/ReservationAndHoldWork
 import { Stage2AlertsReportsWorkspace } from './workspaces/Stage2AlertsReportsWorkspace.tsx';
 import { DonationRestrictionWorkspace } from './workspaces/DonationRestrictionWorkspace.tsx';
 import { StockWorkspace } from './workspaces/StockWorkspace.tsx';
-import {
-  resetStage2Preview,
-  setStage2PreviewEnabled,
-} from './fixtures/stage2Fixtures.ts';
 import { stage2EvidenceStore } from './state/stage2EvidenceStore.ts';
 
 export function App() {
@@ -52,7 +48,6 @@ export function App() {
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [chapterContext, setChapterContext] = useState<ChapterContext | null>(null);
   const [chapterAccess, setChapterAccess] = useState<ChapterAccessSnapshot | null>(null);
-  const [stage2PreviewEnabled, setStage2PreviewState] = useState(false);
   const [stage2DeepLink, setStage2DeepLink] = useState<{
     repfId?: string;
     poId?: string;
@@ -100,6 +95,10 @@ export function App() {
     } else {
       memoryDraftStore.purgeAll();
     }
+    stage2EvidenceStore.clearAll();
+    setStage2DomainSignals({});
+    setStage2DeepLink({});
+    setRfHandoff(null);
     setMemberships([]);
     setMembershipCursor(null);
     setSelectedChapterId(null);
@@ -232,6 +231,9 @@ export function App() {
           setRecentNotices((prev) => [notice, ...prev].slice(0, 25));
           if (notice.event_name === 'stage1.authority.changed.v1') {
             void loadMemberships().catch((err: unknown) => setGlobalError(err));
+            if (selectedChapterId) {
+              void loadChapterState(selectedChapterId, contextGenRef.current);
+            }
           }
           if (notice.chapter_id && notice.chapter_id === selectedChapterId) {
             setRefreshSignal((s) => s + 1);
@@ -302,11 +304,6 @@ export function App() {
     } catch {
       // Clear local session state even if server session already expired
     }
-    setStage2PreviewState(false);
-    resetStage2Preview();
-    stage2EvidenceStore.clearAll();
-    setStage2DeepLink({});
-    setRfHandoff(null);
     handleSessionUpdated(null);
     handleNotify('info', 'Signed out. Temporary session drafts cleared.');
   }
@@ -397,6 +394,9 @@ export function App() {
             setGlobalError(null);
             setChapterContext(null);
             setChapterAccess(null);
+            setStage2DeepLink({});
+            setRfHandoff(null);
+            setStage2DomainSignals({});
             setSelectedChapterId(cid);
           }}
           onLoadMoreMemberships={() => void loadMemberships(membershipCursor)}
@@ -421,35 +421,6 @@ export function App() {
           <OperationBanner error={globalError} />
           {selectedChapterId ? (
             <>
-              <div className="s2-preview-bar" role="region" aria-label="Stage 2 data mode">
-                <div>
-                  <strong>Stage 2 Mode:</strong>{' '}
-                  {stage2PreviewEnabled ? (
-                    <span className="s2-badge is-warning">
-                      Contract Fixture Preview (In-Memory Sample Data)
-                    </span>
-                  ) : (
-                    <span className="s2-badge is-ready">Live HTTP Backend</span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="btn-batcave-secondary p02-compact-btn"
-                  onClick={() => {
-                    const next = !stage2PreviewEnabled;
-                    setStage2PreviewState(next);
-                    setStage2PreviewEnabled(next, selectedChapterId, (notice) => {
-                      setRecentNotices((prev) => [notice, ...prev].slice(0, 25));
-                      setRefreshSignal((s) => s + 1);
-                    });
-                    setRefreshSignal((s) => s + 1);
-                  }}
-                >
-                  {stage2PreviewEnabled
-                    ? 'Switch to Live Backend'
-                    : 'Enable Contract Fixture Preview'}
-                </button>
-              </div>
               {activeTab === 'catalogue' && (
                 <CatalogueWorkspace
                   key={`${session.user.id}::${selectedChapterId}`}
@@ -462,6 +433,7 @@ export function App() {
               )}
               {activeTab === 'stock' && (
                 <StockWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
                   chapterAccess={chapterAccess}
@@ -532,7 +504,6 @@ export function App() {
                   refreshSignal={refreshSignal}
                   domainSignal={stage2DomainSignals.repf ?? stage2DomainSignals.replenishment ?? 0}
                   chapterAccess={chapterAccess}
-                  previewEnabled={stage2PreviewEnabled}
                   initialRepfId={stage2DeepLink.repfId ?? null}
                   onNavigateTab={(tab, opts) => {
                     if (opts) setStage2DeepLink(opts);
@@ -552,7 +523,6 @@ export function App() {
                     (stage2DomainSignals.purchase_order ?? 0)
                   }
                   chapterAccess={chapterAccess}
-                  previewEnabled={stage2PreviewEnabled}
                   initialRepfId={stage2DeepLink.repfId ?? null}
                   initialPoId={stage2DeepLink.poId ?? null}
                   onNavigateTab={(tab, opts) => {
@@ -574,7 +544,6 @@ export function App() {
                     (stage2DomainSignals.receiving_hold ?? 0)
                   }
                   chapterAccess={chapterAccess}
-                  previewEnabled={stage2PreviewEnabled}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                   onBackToDashboard={handleBackToDashboard}
                 />
@@ -587,7 +556,6 @@ export function App() {
                   refreshSignal={refreshSignal}
                   domainSignal={stage2DomainSignals.donation ?? 0}
                   chapterAccess={chapterAccess}
-                  previewEnabled={stage2PreviewEnabled}
                   initialDaId={stage2DeepLink.daId ?? null}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                   onBackToDashboard={handleBackToDashboard}
@@ -604,7 +572,6 @@ export function App() {
                     (stage2DomainSignals.reports ?? 0)
                   }
                   chapterAccess={chapterAccess}
-                  previewEnabled={stage2PreviewEnabled}
                   onHandoffAllocation={({ targetTab, rfId, rfLineId }) => {
                     setRfHandoff({ rfId, rfLineId });
                     setActiveTab(targetTab);

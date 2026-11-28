@@ -1,4 +1,5 @@
 import {
+  ContractApiError,
   apiGetRaw,
   apiGetText,
   apiMutate,
@@ -92,15 +93,77 @@ export interface Stage2PreviewAdapter {
 let previewAdapter: Stage2PreviewAdapter | null = null;
 
 /**
- * Registers an explicit opt-in preview adapter for local Stage 2 workflow walkthroughs.
- * Live HTTP remains active unless the officer explicitly enables preview mode.
+ * Registers an injectable request adapter for automated contract-fixture unit tests.
  */
 export function registerStage2PreviewAdapter(adapter: Stage2PreviewAdapter | null): void {
   previewAdapter = adapter;
 }
 
-export function isStage2PreviewActive(): boolean {
-  return previewAdapter?.isEnabled() ?? false;
+/** Returns current UTC instant formatted with 6 fractional digits per OpenAPI UtcInstant. */
+export function nowUtcInstant(): string {
+  return new Date().toISOString().replace(/\.\d+Z$/, '.000000Z');
+}
+
+/** Converts an `<input type="datetime-local">` value to a canonical 6-digit UTC instant. */
+export function localDateTimeToUtcInstant(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return nowUtcInstant();
+  }
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return nowUtcInstant();
+  }
+  return parsed.toISOString().replace(/\.\d+Z$/, '.000000Z');
+}
+
+/** Formats a UTC instant (default now) for `<input type="datetime-local">` in local wall time. */
+export function utcInstantToLocalDateTimeInput(iso?: string | null): string {
+  const d = iso ? new Date(iso) : new Date();
+  if (Number.isNaN(d.getTime())) {
+    return utcInstantToLocalDateTimeInput(null);
+  }
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Returns current calendar date in Asia/Manila as YYYY-MM-DD (OpenAPI IsoDate). */
+export function currentManilaIsoDate(offsetDays = 0): string {
+  const base = new Date(Date.now() + offsetDays * 86_400_000);
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(base);
+    const y = parts.find((p) => p.type === 'year')?.value;
+    const m = parts.find((p) => p.type === 'month')?.value;
+    const d = parts.find((p) => p.type === 'day')?.value;
+    if (y && m && d) {
+      return `${y}-${m}-${d}`;
+    }
+  } catch {
+    // Fallback below
+  }
+  return base.toISOString().slice(0, 10);
+}
+
+/** Opens server-escaped printable HTML in a new tab with an explicit script-free CSP meta tag. */
+export function openSandboxedPrintableHtml(rawHtml: string): void {
+  const cspMeta =
+    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">';
+  const hardenedHtml = /<head[\s>]/i.test(rawHtml)
+    ? rawHtml.replace(/<head([\s>])/i, `<head$1${cspMeta}`)
+    : `${cspMeta}${rawHtml}`;
+  const blob = new Blob([hardenedHtml], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    URL.revokeObjectURL(blobUrl);
+    return;
+  }
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 }
 
 /**
@@ -168,7 +231,7 @@ async function s2Mutate<T>(
   body: unknown | null,
   query?: Record<string, string | number | boolean | null | undefined>,
   explicitActionKey?: string,
-): Promise<{ data: T; actionKey: string }> {
+): Promise<{ data: T; actionKey: string; replayed: boolean }> {
   const fullPath = `${normalizeStage2Path(basePath)}${buildQuery(query ?? {})}`;
   const key = explicitActionKey ?? newActionKey();
   if (previewAdapter?.isEnabled()) {
@@ -180,13 +243,13 @@ async function s2Mutate<T>(
     });
     if (handled !== null) {
       if (typeof handled === 'object' && handled !== null && 'data' in handled) {
-        return { data: (handled as { data: T }).data, actionKey: key };
+        return { data: (handled as { data: T }).data, actionKey: key, replayed: false };
       }
-      return { data: handled as T, actionKey: key };
+      return { data: handled as T, actionKey: key, replayed: false };
     }
   }
   const { result, actionKey } = await apiMutate<T>(method, fullPath, body, key);
-  return { data: result.data, actionKey };
+  return { data: result.data, actionKey, replayed: Boolean(result.replayed) };
 }
 
 function emptyCursor(): CursorPage {
@@ -204,12 +267,68 @@ async function s2GetList<T>(
   };
 }
 
+/**
+ * Follows cursor pagination across Stage 2 list endpoints, retrying once from
+ * page 1 if a live snapshot expires mid-scroll (`409 snapshot_stale`).
+ */
+export async function listAllStage2Pages<T>(
+  fetchPage: (opts: { limit: number; cursor?: string }) => Promise<Stage2PagedResult<T>>,
+  options?: { pageSize?: number; maxPages?: number; shouldContinue?: () => boolean },
+): Promise<T[]> {
+  const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 100));
+  const maxPages = Math.max(1, options?.maxPages ?? 25);
+
+  const runLoop = async (): Promise<T[]> => {
+    const items: T[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+
+    for (let i = 0; i < maxPages; i += 1) {
+      if (options?.shouldContinue && !options.shouldContinue()) {
+        return items;
+      }
+      const res = await fetchPage(cursor ? { limit: pageSize, cursor } : { limit: pageSize });
+      items.push(...res.data);
+      const next =
+        typeof res.page?.next_cursor === 'string' && res.page.next_cursor.trim() !== ''
+          ? res.page.next_cursor
+          : null;
+      if (!next || seenCursors.has(next)) {
+        break;
+      }
+      seenCursors.add(next);
+      cursor = next;
+    }
+    return items;
+  };
+
+  try {
+    return await runLoop();
+  } catch (err) {
+    if (err instanceof ContractApiError && err.status === 409 && err.code === 'snapshot_stale') {
+      return runLoop();
+    }
+    throw err;
+  }
+}
+
 async function s2GetItem<T>(basePath: string): Promise<T> {
   const payload = await s2Get<{ data?: T } | T>(basePath);
   if (typeof payload === 'object' && payload !== null && 'data' in payload) {
     return (payload as { data: T }).data;
   }
   return payload as T;
+}
+
+async function s2FindByKey<T>(basePath: string): Promise<T | null> {
+  try {
+    return await s2GetItem<T>(basePath);
+  } catch (err) {
+    if (err instanceof ContractApiError && err.status === 404 && err.code === 'operation_not_found') {
+      return null;
+    }
+    throw err;
+  }
 }
 
 /* ==================== 1. Net Shortage & Replenishment ==================== */
@@ -282,7 +401,7 @@ export function createRepf(
   chapterId: string,
   payload: CreateRepfPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<Repf>>(
     'POST',
     `/chapters/${chapterId}/repfs`,
@@ -301,7 +420,7 @@ export function replaceRepf(
   repfId: string,
   payload: ReplaceRepfPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<Repf>>(
     'PUT',
     `/chapters/${chapterId}/repfs/${repfId}`,
@@ -316,7 +435,7 @@ export function submitRepf(
   repfId: string,
   payload: RepfVersionPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<Repf>>(
     'POST',
     `/chapters/${chapterId}/repfs/${repfId}/submit`,
@@ -331,7 +450,7 @@ export function reviewRepfBudget(
   repfId: string,
   payload: ReviewRepfBudgetPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<Repf>>(
     'POST',
     `/chapters/${chapterId}/repfs/${repfId}/budget-review`,
@@ -346,7 +465,7 @@ export function resumeRepfReview(
   repfId: string,
   payload: RepfReasonedPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<Repf>>(
     'POST',
     `/chapters/${chapterId}/repfs/${repfId}/resume-review`,
@@ -361,7 +480,7 @@ export function reviseRepf(
   repfId: string,
   payload: RepfReasonedPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<Repf>>(
     'POST',
     `/chapters/${chapterId}/repfs/${repfId}/revise`,
@@ -376,7 +495,7 @@ export function cancelRepf(
   repfId: string,
   payload: RepfReasonedPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<Repf>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<Repf>>(
     'POST',
     `/chapters/${chapterId}/repfs/${repfId}/cancel`,
@@ -537,7 +656,7 @@ export function createRepfQuotation(
   repfId: string,
   payload: CreateRepfQuotationPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<RepfQuotation>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<RepfQuotation>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<RepfQuotation>>(
     'POST',
     `/chapters/${chapterId}/repfs/${repfId}/quotations`,
@@ -553,7 +672,7 @@ export function replaceRepfQuotation(
   quotationId: string,
   payload: ReplaceRepfQuotationPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<RepfQuotation>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<RepfQuotation>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<RepfQuotation>>(
     'PUT',
     `/chapters/${chapterId}/repfs/${repfId}/quotations/${quotationId}`,
@@ -570,10 +689,7 @@ export function deleteRepfQuotation(
   expectedVersion: number,
   expectedMaterialVersion: number,
   actionKey?: string,
-): Promise<{
-  data: ProcurementOperationReceipt<DeletedQuotationSummary>;
-  actionKey: string;
-}> {
+): Promise<{ data: ProcurementOperationReceipt<DeletedQuotationSummary>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<DeletedQuotationSummary>>(
     'DELETE',
     `/chapters/${chapterId}/repfs/${repfId}/quotations/${quotationId}`,
@@ -591,7 +707,7 @@ export function recordSupplierSelection(
   repfId: string,
   payload: RecordSupplierSelectionPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<SupplierSelection>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<SupplierSelection>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<SupplierSelection>>(
     'POST',
     `/chapters/${chapterId}/repfs/${repfId}/supplier-selection`,
@@ -615,7 +731,7 @@ export function createPurchaseOrder(
   chapterId: string,
   payload: CreatePurchaseOrderPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders`,
@@ -634,7 +750,7 @@ export function replacePurchaseOrder(
   poId: string,
   payload: ReplacePurchaseOrderPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'PUT',
     `/chapters/${chapterId}/purchase-orders/${poId}`,
@@ -649,7 +765,7 @@ export function submitPurchaseOrder(
   poId: string,
   payload: PurchaseOrderVersionPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/submit`,
@@ -664,7 +780,7 @@ export function approvePurchaseOrder(
   poId: string,
   payload: ApprovePurchaseOrderPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/approve`,
@@ -679,7 +795,7 @@ export function returnPurchaseOrder(
   poId: string,
   payload: ReasonedPurchaseOrderPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/return`,
@@ -694,7 +810,7 @@ export function rejectPurchaseOrder(
   poId: string,
   payload: ReasonedPurchaseOrderPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/reject`,
@@ -709,7 +825,7 @@ export function recordPurchaseOrderAcknowledgment(
   poId: string,
   payload: RecordPurchaseOrderAcknowledgmentPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/acknowledgment`,
@@ -724,10 +840,7 @@ export function proposePurchaseOrderAmendment(
   poId: string,
   payload: ProposePurchaseOrderAmendmentPayload,
   actionKey?: string,
-): Promise<{
-  data: ProcurementOperationReceipt<PurchaseOrderAmendmentOutcome>;
-  actionKey: string;
-}> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrderAmendmentOutcome>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrderAmendmentOutcome>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/amendments`,
@@ -743,10 +856,7 @@ export function approvePurchaseOrderAmendment(
   amendmentId: string,
   payload: ApprovePurchaseOrderPayload,
   actionKey?: string,
-): Promise<{
-  data: ProcurementOperationReceipt<PurchaseOrderAmendmentOutcome>;
-  actionKey: string;
-}> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrderAmendmentOutcome>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrderAmendmentOutcome>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/amendments/${amendmentId}/approve`,
@@ -761,7 +871,7 @@ export function closeShortPurchaseOrder(
   poId: string,
   payload: ReasonedPurchaseOrderPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/close-short`,
@@ -776,7 +886,7 @@ export function cancelPurchaseOrder(
   poId: string,
   payload: ReasonedPurchaseOrderPayload,
   actionKey?: string,
-): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string }> {
+): Promise<{ data: ProcurementOperationReceipt<PurchaseOrder>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ProcurementOperationReceipt<PurchaseOrder>>(
     'POST',
     `/chapters/${chapterId}/purchase-orders/${poId}/cancel`,
@@ -827,7 +937,7 @@ export function findProcurementOperationByKey(
   operationName: ProcurementOperationName,
   actionKey: string,
 ): Promise<ProcurementOperationReceipt | null> {
-  return s2GetItem<ProcurementOperationReceipt | null>(
+  return s2FindByKey<ProcurementOperationReceipt>(
     `/chapters/${chapterId}/procurement-operations/by-key${buildQuery({
       operation_name: operationName,
       action_key: actionKey,
@@ -892,7 +1002,7 @@ export function createDonation(
   chapterId: string,
   payload: DonationDraftPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations`,
@@ -911,7 +1021,7 @@ export function replaceDonation(
   daId: string,
   payload: ReplaceDonationPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'PUT',
     `/chapters/${chapterId}/donations/${daId}`,
@@ -960,7 +1070,7 @@ export function submitDonation(
   daId: string,
   payload: DonationVersionPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations/${daId}/submit`,
@@ -975,7 +1085,7 @@ export function acknowledgeDonation(
   daId: string,
   payload: AcknowledgeDonationPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations/${daId}/acknowledge`,
@@ -990,7 +1100,7 @@ export function returnDonation(
   daId: string,
   payload: DonationReasonedPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations/${daId}/return`,
@@ -1005,7 +1115,7 @@ export function declineDonation(
   daId: string,
   payload: DonationReasonedPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations/${daId}/decline`,
@@ -1020,7 +1130,7 @@ export function reviseDonation(
   daId: string,
   payload: DonationVersionPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations/${daId}/revise`,
@@ -1035,7 +1145,7 @@ export function closeShortDonation(
   daId: string,
   payload: DonationReasonedPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations/${daId}/close-short`,
@@ -1050,7 +1160,7 @@ export function cancelDonation(
   daId: string,
   payload: DonationReasonedPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations/${daId}/cancel`,
@@ -1065,7 +1175,7 @@ export function resolveDonationRestriction(
   daId: string,
   payload: ResolveDonationRestrictionPayload,
   actionKey?: string,
-): Promise<{ data: DonationOperationReceipt; actionKey: string }> {
+): Promise<{ data: DonationOperationReceipt; actionKey: string; replayed: boolean }> {
   return s2Mutate<DonationOperationReceipt>(
     'POST',
     `/chapters/${chapterId}/donations/${daId}/restriction-resolutions`,
@@ -1080,7 +1190,7 @@ export function findDonationOperation(
   operationName: DonationMutationName,
   actionKey: string,
 ): Promise<DonationOperationReceipt | null> {
-  return s2GetItem<DonationOperationReceipt | null>(
+  return s2FindByKey<DonationOperationReceipt>(
     `/chapters/${chapterId}/donation-operations/by-key${buildQuery({
       operation_name: operationName,
       action_key: actionKey,
@@ -1240,7 +1350,7 @@ export function createReceivingReport(
   chapterId: string,
   payload: CreateReceivingReportPayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingReport>>(
     'POST',
     `/chapters/${chapterId}/receiving-reports`,
@@ -1259,7 +1369,7 @@ export function replaceReceivingReport(
   rmId: string,
   payload: ReplaceReceivingReportPayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingReport>>(
     'PUT',
     `/chapters/${chapterId}/receiving-reports/${rmId}`,
@@ -1274,7 +1384,7 @@ export function inspectReceivingReport(
   rmId: string,
   payload: InspectReceivingReportPayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingReport>>(
     'POST',
     `/chapters/${chapterId}/receiving-reports/${rmId}/inspection`,
@@ -1289,7 +1399,7 @@ export function matchReceivingReportEvidence(
   rmId: string,
   payload: MatchReceivingReportEvidencePayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingReport>>(
     'POST',
     `/chapters/${chapterId}/receiving-reports/${rmId}/evidence-match`,
@@ -1304,7 +1414,7 @@ export function postReceivingReport(
   rmId: string,
   payload: PostReceivingReportPayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingReport>>(
     'POST',
     `/chapters/${chapterId}/receiving-reports/${rmId}/post`,
@@ -1319,7 +1429,7 @@ export function cancelReceivingReport(
   rmId: string,
   payload: CancelReceivingReportPayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingReport>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingReport>>(
     'POST',
     `/chapters/${chapterId}/receiving-reports/${rmId}/cancel`,
@@ -1411,10 +1521,7 @@ export function notifySupplierOfReceivingDiscrepancy(
   discrepancyId: string,
   payload: NotifySupplierDiscrepancyPayload,
   actionKey?: string,
-): Promise<{
-  data: ReceivingOperationReceipt<ReceivingDiscrepancy>;
-  actionKey: string;
-}> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingDiscrepancy>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingDiscrepancy>>(
     'POST',
     `/chapters/${chapterId}/receiving-discrepancies/${discrepancyId}/notify-supplier`,
@@ -1429,10 +1536,7 @@ export function resolveReceivingDiscrepancy(
   discrepancyId: string,
   payload: ResolveReceivingDiscrepancyPayload,
   actionKey?: string,
-): Promise<{
-  data: ReceivingOperationReceipt<ReceivingDiscrepancy>;
-  actionKey: string;
-}> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingDiscrepancy>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingDiscrepancy>>(
     'POST',
     `/chapters/${chapterId}/receiving-discrepancies/${discrepancyId}/resolutions`,
@@ -1453,7 +1557,7 @@ export function createReceivingHold(
   chapterId: string,
   payload: CreateReceivingHoldPayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingHold>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingHold>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingHold>>(
     'POST',
     `/chapters/${chapterId}/receiving-holds`,
@@ -1472,7 +1576,7 @@ export function linkReceivingHoldSource(
   holdId: string,
   payload: LinkReceivingHoldSourcePayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingHold>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingHold>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingHold>>(
     'POST',
     `/chapters/${chapterId}/receiving-holds/${holdId}/link-source`,
@@ -1487,7 +1591,7 @@ export function rejectReturnReceivingHold(
   holdId: string,
   payload: RejectReturnReceivingHoldPayload,
   actionKey?: string,
-): Promise<{ data: ReceivingOperationReceipt<ReceivingHold>; actionKey: string }> {
+): Promise<{ data: ReceivingOperationReceipt<ReceivingHold>; actionKey: string; replayed: boolean }> {
   return s2Mutate<ReceivingOperationReceipt<ReceivingHold>>(
     'POST',
     `/chapters/${chapterId}/receiving-holds/${holdId}/reject-return`,
@@ -1513,7 +1617,7 @@ export function findReceivingOperationByKey(
   operationName: ReceivingOperationName,
   actionKey: string,
 ): Promise<ReceivingOperationReceipt | null> {
-  return s2GetItem<ReceivingOperationReceipt | null>(
+  return s2FindByKey<ReceivingOperationReceipt>(
     `/chapters/${chapterId}/receiving-operations/by-key${buildQuery({
       operation_name: operationName,
       action_key: actionKey,
@@ -1651,6 +1755,26 @@ export function printControlReport(
     return Promise.reject(new Error(err));
   }
   return s2GetText(`/chapters/${chapterId}/reports/control/print`, { ...query });
+}
+
+export async function settleStage2Tuple<const T extends readonly Promise<unknown>[]>(
+  tasks: T,
+): Promise<{
+  values: { [K in keyof T]: Awaited<T[K]> | undefined };
+  firstError: unknown;
+}> {
+  const results = await Promise.allSettled(tasks);
+  let firstError: unknown = null;
+  const values = results.map((result) => {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+    if (firstError === null) {
+      firstError = result.reason;
+    }
+    return undefined;
+  }) as { [K in keyof T]: Awaited<T[K]> | undefined };
+  return { values, firstError };
 }
 
 export type { AdditionalPurchaseReason };

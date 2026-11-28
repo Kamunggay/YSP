@@ -60,21 +60,3 @@ class Stage2EvidenceStore {
 }
 
 export const stage2EvidenceStore = new Stage2EvidenceStore();
-
-export async function computeSha256Hex(file: File): Promise<string> {
-  const bytes = await file.arrayBuffer();
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const digest = await crypto.subtle.digest('SHA-256', bytes);
-    return Array.from(new Uint8Array(digest))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-  // Fallback deterministic 64-hex hash if subtle crypto is unavailable in an environment.
-  const view = new Uint8Array(bytes);
-  let acc = 2166136261;
-  for (let i = 0; i < view.length; i += 1) {
-    acc ^= view[i] ?? 0;
-    acc = Math.imul(acc, 16777619);
-  }
-  return Math.abs(acc).toString(16).padStart(64, 'a').slice(0, 64);
-}

@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { formatManilaTime } from '../api/client.ts';
+import { openSandboxedPrintableHtml } from '../api/stage2Client.ts';
 import { SearchableRecordPicker } from './SearchableRecordPicker.tsx';
 import type { SearchablePickerOption } from './SearchableRecordPicker.tsx';
 
@@ -32,6 +33,7 @@ export interface AuditOperationRecoveryOption {
 }
 
 interface Stage2AuditPanelsProps {
+  recordId?: string;
   title: string;
   recordVersion: number;
   history: AuditHistoryEntryView[];
@@ -49,6 +51,7 @@ interface Stage2AuditPanelsProps {
 type AuditTab = 'history' | 'versions' | 'related' | 'print' | 'recovery';
 
 export function Stage2AuditPanels({
+  recordId,
   title,
   recordVersion,
   history,
@@ -82,6 +85,26 @@ export function Stage2AuditPanels({
     recentOperationHint?.operationId ?? '',
   );
   const [recoveryResult, setRecoveryResult] = useState<unknown | null>(null);
+
+  useEffect(() => {
+    setError(null);
+    setVersionSnapshot(null);
+    setPrintHtml(null);
+    setRecoveryResult(null);
+    setSelectedVersion(recordVersion > 0 ? String(recordVersion) : '');
+    setTab('history');
+  }, [recordId, title, recordVersion]);
+
+  useEffect(() => {
+    if (!recentOperationHint) {
+      return;
+    }
+    setRecoveryOpName(recentOperationHint.operationName);
+    setRecoveryActionKey(recentOperationHint.actionKey);
+    if (recentOperationHint.operationId) {
+      setRecoveryOpId(recentOperationHint.operationId);
+    }
+  }, [recentOperationHint]);
 
   const versionOptions: Array<SearchablePickerOption<number>> = Array.from(
     { length: Math.max(recordVersion, 1) },
@@ -182,14 +205,7 @@ export function Stage2AuditPanels({
     if (!printHtml) {
       return;
     }
-    const popup = window.open('', '_blank', 'noopener,noreferrer,width=920,height=720');
-    if (popup) {
-      popup.document.open();
-      popup.document.write(printHtml);
-      popup.document.close();
-      popup.focus();
-      popup.print();
-    }
+    openSandboxedPrintableHtml(printHtml);
   }, [printHtml]);
 
   return (

@@ -5,6 +5,7 @@ import {
   cancelRepf,
   createRepf,
   findProcurementOperationByKey,
+  listAllStage2Pages,
   listRepfHistory,
   listRepfRelatedRecords,
   listRepfs,
@@ -17,6 +18,7 @@ import {
   resumeRepfReview,
   reviewRepfBudget,
   reviseRepf,
+  settleStage2Tuple,
   submitRepf,
 } from '../api/stage2Client.ts';
 import type {
@@ -48,7 +50,6 @@ interface ReplenishmentRepfWorkspaceProps {
   refreshSignal: number;
   domainSignal?: number;
   chapterAccess: ChapterAccessSnapshot | null;
-  previewEnabled: boolean;
   initialRepfId?: string | null;
   onNavigateTab: (tab: WorkspaceTab, opts?: { repfId?: string }) => void;
   onBackToDashboard?: () => void;
@@ -104,14 +105,19 @@ export function ReplenishmentRepfWorkspace({
   refreshSignal,
   domainSignal = 0,
   chapterAccess,
-  previewEnabled,
   initialRepfId = null,
   onNavigateTab,
   onBackToDashboard,
 }: ReplenishmentRepfWorkspaceProps) {
   const formKey = 'stage2_repf_editor';
-  const candidates = useStage2Candidates(chapterId, refreshSignal, previewEnabled, chapterAccess);
+  const candidates = useStage2Candidates(chapterId, refreshSignal, chapterAccess);
   const skipDraftSaveRef = useRef(false);
+  const dataGenRef = useRef(0);
+  const detailGenRef = useRef(0);
+  const activeChapterRef = useRef(chapterId);
+  useEffect(() => {
+    activeChapterRef.current = chapterId;
+  }, [chapterId]);
 
   const initialDraft = useMemo<SavedRepfDraft>(() => {
     const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
@@ -161,71 +167,133 @@ export function ReplenishmentRepfWorkspace({
     operationId?: string;
   } | null>(null);
 
-  const canPrepare = !actionBlockReason(chapterAccess, 'repf.prepare');
+  const canReadNeeds = !actionBlockReason(chapterAccess, 'replenishment.read');
+  const canReadRepfs = !actionBlockReason(chapterAccess, 'repf.read');
+  const canReadHistory = !actionBlockReason(chapterAccess, 'history.read');
+  const canDraft = !actionBlockReason(chapterAccess, 'repf.draft');
   const canSubmit = !actionBlockReason(chapterAccess, 'repf.submit');
   const canReview = !actionBlockReason(chapterAccess, 'repf.budget_review');
-  const canResume = !actionBlockReason(chapterAccess, 'repf.resume_review');
-  const canRevise = !actionBlockReason(chapterAccess, 'repf.revise');
   const canCancel = !actionBlockReason(chapterAccess, 'repf.cancel');
 
-  const loadData = useCallback(async () => {
-    setError(null);
-    try {
-      const [needRes, repfRes] = await Promise.all([
-        listReplenishmentNeeds(chapterId, {
-          trigger_filter: triggerFilter,
-          variant_id: variantFilter || undefined,
-          q: needSearch.trim() || undefined,
-          limit: 50,
-        }).catch(() => ({ data: [] as ReplenishmentNeedItem[], page: { next_cursor: null, snapshot_version: 1 } })),
-        listRepfs(chapterId, {
-          status: (repfStatusFilter || undefined) as RepfStatus | undefined,
-          q: repfSearch.trim() || undefined,
-          limit: 50,
-        }),
+  const loadData = useCallback(
+    async (opts?: { preserveError?: boolean }) => {
+      const targetChapter = chapterId;
+      const gen = ++dataGenRef.current;
+      const guard = () =>
+        activeChapterRef.current === targetChapter && dataGenRef.current === gen;
+      if (!opts?.preserveError) {
+        setError(null);
+      }
+      const {
+        values: [needRows, repfRows],
+        firstError,
+      } = await settleStage2Tuple([
+        canReadNeeds
+          ? listAllStage2Pages(
+              (q) =>
+                listReplenishmentNeeds(targetChapter, {
+                  ...q,
+                  trigger_filter: triggerFilter,
+                  variant_id: variantFilter || undefined,
+                  q: needSearch.trim() || undefined,
+                }),
+              { shouldContinue: guard },
+            )
+          : Promise.resolve([] as ReplenishmentNeedItem[]),
+        canReadRepfs
+          ? listAllStage2Pages(
+              (q) =>
+                listRepfs(targetChapter, {
+                  ...q,
+                  status: (repfStatusFilter || undefined) as RepfStatus | undefined,
+                  q: repfSearch.trim() || undefined,
+                }),
+              { shouldContinue: guard },
+            )
+          : Promise.resolve([] as Repf[]),
       ]);
-      setNeeds(needRes.data);
-      setRepfs(repfRes.data);
-      setSelectedRepfId((cur) => {
-        if (initialRepfId && repfRes.data.some((r) => r.id === initialRepfId)) {
-          return initialRepfId;
-        }
-        if (cur && repfRes.data.some((r) => r.id === cur)) {
-          return cur;
-        }
-        return repfRes.data[0]?.id ?? '';
-      });
-    } catch (err) {
-      setError(err);
-    }
-  }, [chapterId, initialRepfId, needSearch, repfSearch, repfStatusFilter, triggerFilter, variantFilter]);
+      if (!guard()) {
+        return;
+      }
+      if (needRows !== undefined) {
+        setNeeds(needRows);
+      }
+      if (repfRows !== undefined) {
+        setRepfs(repfRows);
+        setSelectedRepfId((cur) => {
+          if (initialRepfId && repfRows.some((r) => r.id === initialRepfId)) {
+            return initialRepfId;
+          }
+          if (cur && repfRows.some((r) => r.id === cur)) {
+            return cur;
+          }
+          return repfRows[0]?.id ?? '';
+        });
+      }
+      if (firstError !== null) {
+        setError(firstError);
+      }
+    },
+    [
+      canReadNeeds,
+      canReadRepfs,
+      chapterId,
+      initialRepfId,
+      needSearch,
+      repfSearch,
+      repfStatusFilter,
+      triggerFilter,
+      variantFilter,
+    ],
+  );
 
   const loadSelectedDetail = useCallback(
     async (repfId: string) => {
-      if (!repfId) {
+      if (!repfId || !canReadRepfs) {
         setSelectedRepf(null);
         setHistory([]);
         setRelated([]);
         return;
       }
-      try {
-        const [detail, histRes, relRes] = await Promise.all([
-          readRepf(chapterId, repfId),
-          listRepfHistory(chapterId, repfId, { limit: 50 }),
-          listRepfRelatedRecords(chapterId, repfId, { limit: 50 }),
-        ]);
+      const targetChapter = chapterId;
+      const gen = ++detailGenRef.current;
+      const guard = () =>
+        activeChapterRef.current === targetChapter && detailGenRef.current === gen;
+      const {
+        values: [detail, histRows, relRows],
+        firstError,
+      } = await settleStage2Tuple([
+        readRepf(targetChapter, repfId),
+        canReadHistory
+          ? listAllStage2Pages((q) => listRepfHistory(targetChapter, repfId, q), {
+              shouldContinue: guard,
+            })
+          : Promise.resolve([] as RepfHistoryEntry[]),
+        listAllStage2Pages((q) => listRepfRelatedRecords(targetChapter, repfId, q), {
+          shouldContinue: guard,
+        }),
+      ]);
+      if (!guard()) {
+        return;
+      }
+      if (detail !== undefined) {
         setSelectedRepf(detail);
-        setHistory(histRes.data);
-        setRelated(relRes.data);
-      } catch (err) {
-        setError(err);
+      }
+      if (histRows !== undefined) {
+        setHistory(histRows);
+      }
+      if (relRows !== undefined) {
+        setRelated(relRows);
+      }
+      if (firstError !== null) {
+        setError(firstError);
       }
     },
-    [chapterId],
+    [canReadHistory, canReadRepfs, chapterId],
   );
 
   useEffect(() => {
-    void loadData();
+    void loadData({ preserveError: true });
   }, [loadData, refreshSignal, domainSignal]);
 
   useEffect(() => {
@@ -352,7 +420,7 @@ export function ReplenishmentRepfWorkspace({
       rf_line_id: l.trigger_kind === 'rf_shortage' && l.rf_line_id ? l.rf_line_id : null,
       requested_quantity: l.requested_quantity.trim(),
       estimated_unit_cost_php: l.estimated_unit_cost_php.trim(),
-      needed_by: l.needed_by.trim() ? `${l.needed_by.trim()}T01:00:00.000000Z` : null,
+      needed_by: l.needed_by.trim() ? `${l.needed_by.trim()}T00:00:00.000000Z` : null,
       additional_purchase_reason: l.overrideEnabled
         ? {
             category: l.overrideCategory,
@@ -373,7 +441,7 @@ export function ReplenishmentRepfWorkspace({
     try {
       const payloadLines = buildLineInputs();
       if (editingRepfId && selectedRepf && selectedRepf.id === editingRepfId) {
-        const { data, actionKey } = await replaceRepf(chapterId, editingRepfId, {
+        const { data, actionKey, replayed: wasReplayed } = await replaceRepf(chapterId, editingRepfId, {
           expected_version: selectedRepf.version,
           expected_material_version: selectedRepf.material_version,
           funding_source: 'chapter_funds',
@@ -389,8 +457,9 @@ export function ReplenishmentRepfWorkspace({
         });
         setStatusMessage(`Updated RepF revision v${data.result.version}.`);
         setSelectedRepfId(data.result.id);
+        setReplayed(wasReplayed);
       } else {
-        const { data, actionKey } = await createRepf(chapterId, {
+        const { data, actionKey, replayed: wasReplayed } = await createRepf(chapterId, {
           funding_source: 'chapter_funds',
           urgency,
           justification: justification.trim(),
@@ -405,10 +474,10 @@ export function ReplenishmentRepfWorkspace({
         setEditingRepfId(data.result.id);
         setSelectedRepfId(data.result.id);
         setStatusMessage('Created draft RepF without deducting stock.');
+        setReplayed(wasReplayed);
       }
       skipDraftSaveRef.current = true;
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
-      setReplayed(false);
       await loadData();
     } catch (err) {
       if (err instanceof ContractApiError && err.code === 'duplicate_supply_coverage') {
@@ -424,7 +493,7 @@ export function ReplenishmentRepfWorkspace({
 
   async function runLifecycleAction(
     opName: ProcurementOperationName,
-    fn: () => Promise<{ data: { operation_id: string; result: Repf }; actionKey: string }>,
+    fn: () => Promise<{ data: { operation_id: string; result: Repf }; actionKey: string; replayed: boolean }>,
     msg: string,
   ) {
     setBusy(true);
@@ -432,10 +501,11 @@ export function ReplenishmentRepfWorkspace({
     setStatusMessage(null);
     setDuplicateConflictHint(null);
     try {
-      const { data, actionKey } = await fn();
+      const { data, actionKey, replayed: wasReplayed } = await fn();
       setPendingActionKey(actionKey);
       setLastOpHint({ operationName: opName, actionKey, operationId: data.operation_id });
       setStatusMessage(msg);
+      setReplayed(wasReplayed);
       setTransitionReason('');
       await loadData();
       await loadSelectedDetail(data.result.id);
@@ -444,7 +514,7 @@ export function ReplenishmentRepfWorkspace({
         setDuplicateConflictHint(
           'Submit blocked by existing open inbound supply coverage. Edit the RepF line with an Additional Purchase Reason (late, disputed, or ineligible supply) and save before re-submitting.',
         );
-        if (selectedRepf) {
+        if (selectedRepf && editingRepfId !== selectedRepf.id) {
           handleLoadSelectedForEdit(selectedRepf);
           setLines((prev) => prev.map((line) => ({ ...line, overrideEnabled: true })));
         }
@@ -605,7 +675,7 @@ export function ReplenishmentRepfWorkspace({
                         <button
                           type="button"
                           className="btn-batcave-primary p02-compact-btn"
-                          disabled={!canPrepare}
+                          disabled={!canDraft}
                           onClick={() => handleSeedFromNeed(need)}
                         >
                           Draft RepF
@@ -855,7 +925,7 @@ export function ReplenishmentRepfWorkspace({
                   <button
                     type="button"
                     className="btn-batcave-secondary p02-compact-btn"
-                    disabled={!canPrepare || busy}
+                    disabled={!canDraft || busy}
                     onClick={() => handleLoadSelectedForEdit(selectedRepf)}
                   >
                     Load into Editor
@@ -884,7 +954,7 @@ export function ReplenishmentRepfWorkspace({
                     <button
                       type="button"
                       className="btn-batcave-primary p02-compact-btn"
-                      disabled={!canRevise || busy}
+                      disabled={!canDraft || busy}
                       onClick={() =>
                         void runLifecycleAction(
                           'reviseRepf',
@@ -908,7 +978,7 @@ export function ReplenishmentRepfWorkspace({
                 <button
                   type="button"
                   className="btn-batcave-primary p02-compact-btn"
-                  disabled={!canResume || busy || !transitionReason.trim()}
+                  disabled={!canReview || busy || !transitionReason.trim()}
                   onClick={() =>
                     void runLifecycleAction(
                       'resumeRepfReview',
@@ -1296,7 +1366,7 @@ export function ReplenishmentRepfWorkspace({
             <button
               type="submit"
               className="btn-batcave-primary"
-              disabled={!canPrepare || busy}
+              disabled={!canDraft || busy}
             >
               {busy ? 'Saving...' : editingRepfId ? 'Replace Draft RepF' : 'Save New Draft RepF'}
             </button>
@@ -1306,6 +1376,7 @@ export function ReplenishmentRepfWorkspace({
 
       {selectedRepf && (
         <Stage2AuditPanels
+          recordId={selectedRepf.id}
           title={selectedRepf.repf_reference ?? 'Draft RepF'}
           recordVersion={selectedRepf.version}
           history={history.map((h) => ({
@@ -1341,6 +1412,8 @@ export function ReplenishmentRepfWorkspace({
             { value: 'replaceRepf', label: 'Replace RepF Draft' },
             { value: 'submitRepf', label: 'Submit RepF' },
             { value: 'reviewRepfBudget', label: 'Budget Review Decision' },
+            { value: 'resumeRepfReview', label: 'Resume Held RepF Review' },
+            { value: 'reviseRepf', label: 'Move RepF to Draft' },
             { value: 'cancelRepf', label: 'Cancel RepF' },
           ]}
           onLookupByActionKey={(op, key) =>

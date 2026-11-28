@@ -5,9 +5,11 @@ import {
   cancelReceivingReport,
   createReceivingHold,
   createReceivingReport,
+  currentManilaIsoDate,
   findReceivingOperationByKey,
   inspectReceivingReport,
   linkReceivingHoldSource,
+  listAllStage2Pages,
   listDonations,
   listPurchaseOrders,
   listReceivingDiscrepancies,
@@ -20,6 +22,7 @@ import {
   listReceivingReports,
   matchReceivingReportEvidence,
   notifySupplierOfReceivingDiscrepancy,
+  nowUtcInstant,
   postReceivingReport,
   printReceivingReport,
   readReceivingOperation,
@@ -28,6 +31,7 @@ import {
   rejectReturnReceivingHold,
   replaceReceivingReport,
   resolveReceivingDiscrepancy,
+  settleStage2Tuple,
 } from '../api/stage2Client.ts';
 import type {
   Donation,
@@ -63,7 +67,6 @@ interface ReceivingDiscrepancyHoldWorkspaceProps {
   refreshSignal: number;
   domainSignal?: number;
   chapterAccess: ChapterAccessSnapshot | null;
-  previewEnabled: boolean;
   initialSubTab?: 'reports' | 'discrepancies' | 'holds';
   onNavigateTab: (tab: WorkspaceTab) => void;
   onBackToDashboard?: () => void;
@@ -89,14 +92,20 @@ export function ReceivingDiscrepancyHoldWorkspace({
   refreshSignal,
   domainSignal = 0,
   chapterAccess,
-  previewEnabled,
   initialSubTab = 'reports',
   onNavigateTab,
   onBackToDashboard,
 }: ReceivingDiscrepancyHoldWorkspaceProps) {
   const formKey = 'stage2_receiving_editor';
-  const candidates = useStage2Candidates(chapterId, refreshSignal, previewEnabled, chapterAccess);
+  const candidates = useStage2Candidates(chapterId, refreshSignal, chapterAccess);
   const skipSaveRef = useRef(false);
+  const allGenRef = useRef(0);
+  const rmDetailGenRef = useRef(0);
+  const holdHistGenRef = useRef(0);
+  const activeChapterRef = useRef(chapterId);
+  useEffect(() => {
+    activeChapterRef.current = chapterId;
+  }, [chapterId]);
 
   const savedDraft = useMemo<{
     sourceKind?: ReceivingSourceKind;
@@ -145,7 +154,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
   const [originatingHoldId, setOriginatingHoldId] = useState('');
   const [supplierDrRef, setSupplierDrRef] = useState(savedDraft.supplierDrRef ?? '');
   const [supplierDrDate, setSupplierDrDate] = useState(
-    savedDraft.supplierDrDate ?? new Date().toISOString().slice(0, 10),
+    savedDraft.supplierDrDate ?? currentManilaIsoDate(),
   );
   const [locationId, setLocationId] = useState(savedDraft.locationId ?? '');
   const [lines, setLines] = useState<EditableRmLine[]>(savedDraft.lines ?? []);
@@ -192,7 +201,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
   const [linkSourceKind, setLinkSourceKind] = useState<ReceivingSourceKind>('po');
   const [linkSourceId, setLinkSourceId] = useState('');
   const [linkDrRef, setLinkDrRef] = useState('');
-  const [linkDrDate, setLinkDrDate] = useState(new Date().toISOString().slice(0, 10));
+  const [linkDrDate, setLinkDrDate] = useState(() => currentManilaIsoDate());
   const [linkNotes, setLinkNotes] = useState('');
 
   const [rejectReason, setRejectReason] = useState('');
@@ -209,55 +218,143 @@ export function ReceivingDiscrepancyHoldWorkspace({
     operationId?: string;
   } | null>(null);
 
-  const canPrepareRm = !actionBlockReason(chapterAccess, 'receiving_report.prepare');
-  const canInspectRm = !actionBlockReason(chapterAccess, 'receiving_report.inspect');
-  const canMatchRm = !actionBlockReason(chapterAccess, 'receiving_report.match_evidence');
-  const canPostRm = !actionBlockReason(chapterAccess, 'receiving_report.post');
-  const canCancelRm = !actionBlockReason(chapterAccess, 'receiving_report.cancel');
-  const canManageDisc = !actionBlockReason(chapterAccess, 'receiving_discrepancy.manage');
-  const canManageHold = !actionBlockReason(chapterAccess, 'receiving_hold.manage');
+  const canReadRcv = !actionBlockReason(chapterAccess, 'receiving.read');
+  const canReadHistory = !actionBlockReason(chapterAccess, 'history.read');
+  const canReadPos = !actionBlockReason(chapterAccess, 'po.read');
+  const canReadDas = !actionBlockReason(chapterAccess, 'da.read');
+  const canPrepareRm = !actionBlockReason(chapterAccess, 'receiving.draft');
+  const canInspectRm = !actionBlockReason(chapterAccess, 'receiving.inspect');
+  const canMatchRm = !actionBlockReason(chapterAccess, 'receiving.match_evidence');
+  const canPostRm = !actionBlockReason(chapterAccess, 'receiving.post');
+  const canCancelRm = !actionBlockReason(chapterAccess, 'receiving.cancel');
+  const canManageDisc = !actionBlockReason(chapterAccess, 'discrepancy.manage');
+  const canResolveDisc = !actionBlockReason(chapterAccess, 'discrepancy.resolve');
+  const canManageHold = !actionBlockReason(chapterAccess, 'receiving.hold_manage');
+
+  const handleSelectRmChange = useCallback((nextRmId: string) => {
+    setSelectedRmId((cur) => {
+      if (cur === nextRmId) return cur;
+      rmDetailGenRef.current += 1;
+      setMatchEvidence(null);
+      setRepId('');
+      setInspectionNotes('');
+      setCancelReason('');
+      return nextRmId;
+    });
+  }, []);
+
+  const handleSelectDiscChange = useCallback((nextDiscId: string) => {
+    setSelectedDiscId((cur) => {
+      if (cur === nextDiscId) return cur;
+      setSupplierContact('');
+      setNotifyNotes('');
+      setExpectedResDate('');
+      setReviewNotes('');
+      setReplacementRmId('');
+      setResolutionReason('');
+      setDiscEvidence(null);
+      return nextDiscId;
+    });
+  }, []);
+
+  const handleSelectHoldChange = useCallback((nextHoldId: string) => {
+    setSelectedHoldId((cur) => {
+      if (cur === nextHoldId) return cur;
+      holdHistGenRef.current += 1;
+      setLinkSourceId('');
+      setLinkDrRef('');
+      setLinkNotes('');
+      setRejectReason('');
+      setRejectRecipient('');
+      setRejectEvidence(null);
+      return nextHoldId;
+    });
+  }, []);
 
   const loadAll = useCallback(async () => {
-    try {
-      const [poRes, daRes, rmRes, discRes, holdRes] = await Promise.all([
-        listPurchaseOrders(chapterId, { limit: 50 }).catch(() => ({
-          data: [] as PurchaseOrder[],
-        })),
-        listDonations(chapterId, { limit: 50 }).catch(() => ({ data: [] as Donation[] })),
-        listReceivingReports(chapterId, { limit: 50 }),
-        listReceivingDiscrepancies(chapterId, { limit: 50 }),
-        listReceivingHolds(chapterId, { limit: 50 }),
-      ]);
+    const targetChapter = chapterId;
+    const gen = ++allGenRef.current;
+    const guard = () =>
+      activeChapterRef.current === targetChapter && allGenRef.current === gen;
+    const {
+      values: [poRows, daRows, rmRows, discRows, holdRows],
+      firstError,
+    } = await settleStage2Tuple([
+      canReadPos
+        ? listAllStage2Pages((q) => listPurchaseOrders(targetChapter, q), {
+            shouldContinue: guard,
+          })
+        : Promise.resolve([] as PurchaseOrder[]),
+      canReadDas
+        ? listAllStage2Pages((q) => listDonations(targetChapter, q), {
+            shouldContinue: guard,
+          })
+        : Promise.resolve([] as Donation[]),
+      canReadRcv
+        ? listAllStage2Pages((q) => listReceivingReports(targetChapter, q), {
+            shouldContinue: guard,
+          })
+        : Promise.resolve([] as ReceivingReport[]),
+      canReadRcv
+        ? listAllStage2Pages((q) => listReceivingDiscrepancies(targetChapter, q), {
+            shouldContinue: guard,
+          })
+        : Promise.resolve([] as ReceivingDiscrepancy[]),
+      canReadRcv
+        ? listAllStage2Pages((q) => listReceivingHolds(targetChapter, q), {
+            shouldContinue: guard,
+          })
+        : Promise.resolve([] as ReceivingHold[]),
+    ]);
+    if (!guard()) return;
+    if (poRows !== undefined) {
       setPurchaseOrders(
-        poRes.data.filter(
+        poRows.filter(
           (p) => p.status === 'issued' || p.status === 'partially_received',
         ),
       );
+    }
+    if (daRows !== undefined) {
       setDonations(
-        daRes.data.filter(
+        daRows.filter(
           (d) => d.status === 'acknowledged' || d.status === 'partially_received',
         ),
       );
-      setReports(rmRes.data);
-      setDiscrepancies(discRes.data);
-      setHolds(holdRes.data);
-      setSelectedRmId((cur) =>
-        cur && rmRes.data.some((r) => r.id === cur) ? cur : (rmRes.data[0]?.id ?? ''),
-      );
-      setSelectedDiscId((cur) =>
-        cur && discRes.data.some((d) => d.id === cur) ? cur : (discRes.data[0]?.id ?? ''),
-      );
-      setSelectedHoldId((cur) =>
-        cur && holdRes.data.some((h) => h.id === cur) ? cur : (holdRes.data[0]?.id ?? ''),
-      );
-    } catch (err) {
-      setError(err);
     }
-  }, [chapterId]);
+    if (rmRows !== undefined) {
+      setReports(rmRows);
+      setSelectedRmId((cur) => {
+        const next = cur && rmRows.some((r) => r.id === cur) ? cur : (rmRows[0]?.id ?? '');
+        if (next !== cur) setMatchEvidence(null);
+        return next;
+      });
+    }
+    if (discRows !== undefined) {
+      setDiscrepancies(discRows);
+      setSelectedDiscId((cur) => {
+        const next =
+          cur && discRows.some((d) => d.id === cur) ? cur : (discRows[0]?.id ?? '');
+        if (next !== cur) setDiscEvidence(null);
+        return next;
+      });
+    }
+    if (holdRows !== undefined) {
+      setHolds(holdRows);
+      setSelectedHoldId((cur) => {
+        const next =
+          cur && holdRows.some((h) => h.id === cur) ? cur : (holdRows[0]?.id ?? '');
+        if (next !== cur) setRejectEvidence(null);
+        return next;
+      });
+    }
+    if (firstError !== null) {
+      setError(firstError);
+    }
+  }, [canReadDas, canReadPos, canReadRcv, chapterId]);
 
   const loadSelectedRmDetail = useCallback(
     async (rmId: string) => {
-      if (!rmId) {
+      if (!rmId || !canReadRcv) {
         setSelectedRm(null);
         setMovements([]);
         setRmDiscrepancies([]);
@@ -265,24 +362,51 @@ export function ReceivingDiscrepancyHoldWorkspace({
         setRmRelated([]);
         return;
       }
-      try {
-        const [detail, movRes, discRes, histRes, relRes] = await Promise.all([
-          readReceivingReport(chapterId, rmId),
-          listReceivingReportMovements(chapterId, rmId, { limit: 50 }),
-          listReceivingReportDiscrepancies(chapterId, rmId, { limit: 50 }),
-          listReceivingReportHistory(chapterId, rmId, { limit: 50 }),
-          listReceivingReportRelated(chapterId, rmId, { limit: 50 }),
-        ]);
+      const targetChapter = chapterId;
+      const gen = ++rmDetailGenRef.current;
+      const guard = () =>
+        activeChapterRef.current === targetChapter && rmDetailGenRef.current === gen;
+      const {
+        values: [detail, movRows, discRows, histRows, relRows],
+        firstError,
+      } = await settleStage2Tuple([
+        readReceivingReport(targetChapter, rmId),
+        listAllStage2Pages((q) => listReceivingReportMovements(targetChapter, rmId, q), {
+          shouldContinue: guard,
+        }),
+        listAllStage2Pages((q) => listReceivingReportDiscrepancies(targetChapter, rmId, q), {
+          shouldContinue: guard,
+        }),
+        canReadHistory
+          ? listAllStage2Pages((q) => listReceivingReportHistory(targetChapter, rmId, q), {
+              shouldContinue: guard,
+            })
+          : Promise.resolve([] as ReceivingReportHistoryEntry[]),
+        listAllStage2Pages((q) => listReceivingReportRelated(targetChapter, rmId, q), {
+          shouldContinue: guard,
+        }),
+      ]);
+      if (!guard()) return;
+      if (detail !== undefined) {
         setSelectedRm(detail);
-        setMovements(movRes.data);
-        setRmDiscrepancies(discRes.data);
-        setRmHistory(histRes.data);
-        setRmRelated(relRes.data);
-      } catch (err) {
-        setError(err);
+      }
+      if (movRows !== undefined) {
+        setMovements(movRows);
+      }
+      if (discRows !== undefined) {
+        setRmDiscrepancies(discRows);
+      }
+      if (histRows !== undefined) {
+        setRmHistory(histRows);
+      }
+      if (relRows !== undefined) {
+        setRmRelated(relRows);
+      }
+      if (firstError !== null) {
+        setError(firstError);
       }
     },
-    [chapterId],
+    [canReadHistory, canReadRcv, chapterId],
   );
 
   useEffect(() => {
@@ -294,14 +418,27 @@ export function ReceivingDiscrepancyHoldWorkspace({
   }, [loadSelectedRmDetail, selectedRmId, refreshSignal, domainSignal]);
 
   useEffect(() => {
-    if (!selectedHoldId) {
+    if (!selectedHoldId || !canReadRcv || !canReadHistory) {
       setHoldHistory([]);
       return;
     }
-    void listReceivingHoldHistory(chapterId, selectedHoldId, { limit: 25 })
-      .then((res) => setHoldHistory(res.data))
-      .catch(() => setHoldHistory([]));
-  }, [chapterId, selectedHoldId, refreshSignal, domainSignal]);
+    const targetChapter = chapterId;
+    const gen = ++holdHistGenRef.current;
+    const guard = () =>
+      activeChapterRef.current === targetChapter && holdHistGenRef.current === gen;
+    void listAllStage2Pages((q) => listReceivingHoldHistory(targetChapter, selectedHoldId, q), {
+      shouldContinue: guard,
+    })
+      .then((rows) => {
+        if (guard()) setHoldHistory(rows);
+      })
+      .catch((err) => {
+        if (guard()) {
+          setHoldHistory([]);
+          setError(err);
+        }
+      });
+  }, [canReadHistory, canReadRcv, chapterId, selectedHoldId, refreshSignal, domainSignal]);
 
   useEffect(() => {
     if (skipSaveRef.current) {
@@ -342,6 +479,11 @@ export function ReceivingDiscrepancyHoldWorkspace({
         meta: r,
       })),
     [reports],
+  );
+
+  const postedPoRmOptions = useMemo(
+    () => rmOptions.filter((opt) => opt.meta.status === 'posted' && opt.meta.source_kind === 'po'),
+    [rmOptions],
   );
 
   const poSourceOptions = useMemo<Array<SearchablePickerOption<PurchaseOrder>>>(
@@ -512,8 +654,8 @@ export function ReceivingDiscrepancyHoldWorkspace({
           expected_material_version: selectedRm.material_version,
           source_material_version: selectedRm.source_material_version,
           supplier_dr_reference:
-            sourceKind === 'po' ? supplierDrRef.trim() || null : supplierDrRef.trim() || null,
-          supplier_dr_date: supplierDrDate || null,
+            sourceKind === 'po' ? supplierDrRef.trim() || null : null,
+          supplier_dr_date: sourceKind === 'po' ? supplierDrDate || null : null,
           location_id: locationId,
           lines: payloadLines,
         });
@@ -531,8 +673,8 @@ export function ReceivingDiscrepancyHoldWorkspace({
           source_id: sourceId,
           source_material_version: getSourceMaterialVersion(),
           originating_hold_id: originatingHoldId || null,
-          supplier_dr_reference: supplierDrRef.trim() || null,
-          supplier_dr_date: supplierDrDate || null,
+          supplier_dr_reference: sourceKind === 'po' ? supplierDrRef.trim() || null : null,
+          supplier_dr_date: sourceKind === 'po' ? supplierDrDate || null : null,
           location_id: locationId,
           lines: payloadLines,
         });
@@ -635,7 +777,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
               label="Select Receiving Report"
               valueId={selectedRmId}
               options={rmOptions}
-              onSelect={(opt) => setSelectedRmId(opt?.id ?? '')}
+              onSelect={(opt) => handleSelectRmChange(opt?.id ?? '')}
               placeholder="Search RM reference, PO/DA source, or DR..."
             />
 
@@ -819,7 +961,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
                               expected_material_version: selectedRm.material_version,
                               source_material_version: selectedRm.source_material_version,
                               technical_or_requesting_representative_id: repId || null,
-                              inspected_at: new Date().toISOString(),
+                              inspected_at: nowUtcInstant(),
                               inspection_notes: inspectionNotes.trim(),
                               lines: selectedRm.lines.map((l) => ({
                                 source_line_id: l.source_line_id,
@@ -858,7 +1000,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
                       <button
                         type="button"
                         className="btn-batcave-primary p02-compact-btn"
-                        disabled={!canMatchRm || busy || !matchEvidence}
+                        disabled={!canMatchRm || busy || !matchEvidence || !selectedRm.snapshot?.sha256}
                         onClick={() =>
                           void runReceivingAction(
                             'matchReceivingReportEvidence',
@@ -866,12 +1008,9 @@ export function ReceivingDiscrepancyHoldWorkspace({
                               matchReceivingReportEvidence(chapterId, selectedRm.id, {
                                 expected_version: selectedRm.version,
                                 expected_material_version: selectedRm.material_version,
-                                snapshot_sha256:
-                                  selectedRm.snapshot?.sha256 ??
-                                  matchEvidence!.attachments[0]?.sha256 ??
-                                  'a'.repeat(64),
+                                snapshot_sha256: selectedRm.snapshot!.sha256,
                                 evidence: matchEvidence!,
-                                acknowledged_at: new Date().toISOString(),
+                                acknowledged_at: nowUtcInstant(),
                               }),
                             'Matched paper evidence binding to inspected RM.',
                           )
@@ -1048,22 +1187,24 @@ export function ReceivingDiscrepancyHoldWorkspace({
               <div className="s2-grid-3">
                 <div className="form-group">
                   <label className="form-label">
-                    Supplier DR / Waybill Ref {sourceKind === 'po' ? '(Required)' : '(Optional)'}
+                    Supplier DR / Waybill Ref {sourceKind === 'po' ? '(Required)' : '(N/A for DA)'}
                   </label>
                   <input
                     className="form-control"
                     required={sourceKind === 'po'}
-                    value={supplierDrRef}
+                    disabled={sourceKind === 'da'}
+                    value={sourceKind === 'po' ? supplierDrRef : ''}
                     onChange={(e) => setSupplierDrRef(e.target.value)}
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">DR Date</label>
+                  <label className="form-label">DR Date {sourceKind === 'da' ? '(N/A for DA)' : ''}</label>
                   <input
                     type="date"
                     className="form-control"
                     required={sourceKind === 'po'}
-                    value={supplierDrDate}
+                    disabled={sourceKind === 'da'}
+                    value={sourceKind === 'po' ? supplierDrDate : ''}
                     onChange={(e) => setSupplierDrDate(e.target.value)}
                   />
                 </div>
@@ -1213,6 +1354,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
 
           {selectedRm && (
             <Stage2AuditPanels
+              recordId={selectedRm.id}
               title={selectedRm.rm_reference ?? 'Draft Receiving Report'}
               recordVersion={selectedRm.version}
               history={rmHistory.map((h) => ({
@@ -1246,9 +1388,16 @@ export function ReceivingDiscrepancyHoldWorkspace({
               }}
               recoveryOperations={[
                 { value: 'createReceivingReport', label: 'Create RM Draft' },
+                { value: 'replaceReceivingReport', label: 'Replace RM Draft' },
                 { value: 'inspectReceivingReport', label: 'Inspect RM' },
                 { value: 'matchReceivingReportEvidence', label: 'Match RM Evidence' },
                 { value: 'postReceivingReport', label: 'Post RM to Stock' },
+                { value: 'cancelReceivingReport', label: 'Cancel Pre-Post RM' },
+                { value: 'notifySupplierOfReceivingDiscrepancy', label: 'Notify Supplier (Discrepancy)' },
+                { value: 'resolveReceivingDiscrepancy', label: 'Resolve Discrepancy' },
+                { value: 'createReceivingHold', label: 'Create Missing-Source Hold' },
+                { value: 'linkReceivingHoldSource', label: 'Link Missing-Source Hold' },
+                { value: 'rejectReturnReceivingHold', label: 'Reject & Return Hold' },
               ]}
               onLookupByActionKey={(op, key) =>
                 findReceivingOperationByKey(chapterId, op as ReceivingOperationName, key)
@@ -1275,7 +1424,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
             label="Select Discrepancy Record"
             valueId={selectedDiscId}
             options={openDiscrepancyOptions}
-            onSelect={(opt) => setSelectedDiscId(opt?.id ?? '')}
+            onSelect={(opt) => handleSelectDiscChange(opt?.id ?? '')}
           />
 
           {selectedDisc && (
@@ -1389,7 +1538,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
                           <button
                             type="button"
                             className="btn-batcave-secondary p02-compact-btn"
-                            disabled={!canManageDisc || busy || !reviewNotes.trim()}
+                            disabled={!canResolveDisc || busy || !reviewNotes.trim()}
                             onClick={() =>
                               void runReceivingAction(
                                 'resolveReceivingDiscrepancy',
@@ -1449,9 +1598,9 @@ export function ReceivingDiscrepancyHoldWorkspace({
                       {resolutionKind === 'supplier_replacement_received' && (
                         <SearchableRecordPicker
                           id="rcv-disc-repl-picker"
-                          label="Replacement Receiving Report"
+                          label="Replacement Receiving Report (Posted PO-RM)"
                           valueId={replacementRmId}
-                          options={rmOptions}
+                          options={postedPoRmOptions}
                           onSelect={(opt) => setReplacementRmId(opt?.id ?? '')}
                           required
                         />
@@ -1480,7 +1629,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
                       type="button"
                       className="btn-batcave-primary"
                       disabled={
-                        !canManageDisc ||
+                        !canResolveDisc ||
                         busy ||
                         !resolutionReason.trim() ||
                         !discEvidence ||
@@ -1502,7 +1651,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
                                   : null,
                               quarantined_lot_disposition: lotDisposition,
                               evidence: discEvidence!,
-                              signed_at: new Date().toISOString(),
+                              signed_at: nowUtcInstant(),
                             }),
                           'Resolved receiving discrepancy and updated quarantined lot disposition.',
                         )
@@ -1534,7 +1683,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
               label="Select Receiving Hold"
               valueId={selectedHoldId}
               options={allHoldOptions}
-              onSelect={(opt) => setSelectedHoldId(opt?.id ?? '')}
+              onSelect={(opt) => handleSelectHoldChange(opt?.id ?? '')}
             />
 
             {selectedHold && (
@@ -1698,7 +1847,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
                                 reason: rejectReason.trim(),
                                 recipient_or_carrier_name: rejectRecipient.trim(),
                                 evidence: rejectEvidence!,
-                                signed_at: new Date().toISOString(),
+                                signed_at: nowUtcInstant(),
                               }),
                             'Recorded signed rejection and physical return.',
                           )
@@ -1858,7 +2007,7 @@ export function ReceivingDiscrepancyHoldWorkspace({
                     'createReceivingHold',
                     () =>
                       createReceivingHold(chapterId, {
-                        arrived_at: new Date().toISOString(),
+                        arrived_at: nowUtcInstant(),
                         holding_location_id: holdLocationId,
                         carrier_or_sender_name: carrierName.trim(),
                         sender_kind: senderKind,

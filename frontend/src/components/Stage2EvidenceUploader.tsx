@@ -1,8 +1,7 @@
-import { useEffect, useId, useMemo, useState } from 'react';
-import { apiMutate, formatManilaTime, newActionKey } from '../api/client.ts';
-import { isStage2PreviewActive } from '../api/stage2Client.ts';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { apiMutate, formatManilaTime } from '../api/client.ts';
 import type { AllEvidencePurpose, Stage2EvidenceByteBinding } from '../api/stage2Types.ts';
-import { computeSha256Hex, stage2EvidenceStore } from '../state/stage2EvidenceStore.ts';
+import { stage2EvidenceStore } from '../state/stage2EvidenceStore.ts';
 import type { SessionEvidenceRecord } from '../state/stage2EvidenceStore.ts';
 import { SearchableRecordPicker } from './SearchableRecordPicker.tsx';
 import type { SearchablePickerOption } from './SearchableRecordPicker.tsx';
@@ -36,12 +35,26 @@ export function Stage2EvidenceUploader({
   helperText,
 }: Stage2EvidenceUploaderProps) {
   const fileInputId = useId();
+  const pickerUid = useId();
   const [files, setFiles] = useState<FileList | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<SessionEvidenceRecord[]>(() =>
     stage2EvidenceStore.list(chapterId, purpose),
   );
+  const uploadGenRef = useRef(0);
+  const contextRef = useRef({ chapterId, purpose, recordId });
+
+  useEffect(() => {
+    contextRef.current = { chapterId, purpose, recordId };
+    uploadGenRef.current += 1;
+    setFiles(null);
+    setFileInputKey((k) => k + 1);
+    setError(null);
+    setBusy(false);
+    setRecords(stage2EvidenceStore.list(chapterId, purpose));
+  }, [chapterId, purpose, recordId]);
 
   useEffect(() => {
     return stage2EvidenceStore.subscribe(() => {
@@ -70,72 +83,84 @@ export function Stage2EvidenceUploader({
   );
 
   async function handleUpload() {
+    if (disabled) {
+      return;
+    }
     if (!files || files.length === 0) {
       setError('Select at least one image or PDF scan first.');
       return;
     }
+    const targetChapter = chapterId;
+    const targetPurpose = purpose;
     const targetRecord = recordId.trim();
+    const targetLabel = recordLabel;
     if (!targetRecord) {
       setError('Save or select the parent record before binding supporting paper.');
       return;
     }
 
+    const gen = ++uploadGenRef.current;
     setBusy(true);
     setError(null);
     try {
-      let binding: Stage2EvidenceByteBinding;
-      let version = 1;
-      if (isStage2PreviewActive()) {
-        const attachmentRows = await Promise.all(
-          Array.from(files).map(async (f) => ({
-            attachment_id: newActionKey(),
-            sha256: await computeSha256Hex(f),
-          })),
-        );
-        binding = {
-          evidence_id: newActionKey(),
-          version_id: newActionKey(),
-          attachments: attachmentRows,
-        };
-      } else {
-        const fd = new FormData();
-        fd.append('purpose', purpose);
-        fd.append('record_id', targetRecord);
-        for (const f of Array.from(files)) {
-          fd.append('attachments', f, f.name);
-        }
-        const { result } = await apiMutate<EvidenceUploadApiResult>(
-          'POST',
-          `/api/v1/chapters/${chapterId}/evidence`,
-          fd,
-        );
-        const data = result.data;
-        version = data.version ?? 1;
-        binding = {
-          evidence_id: data.evidence_id,
-          version_id: data.version_id,
-          attachments: data.attachments,
-        };
+      const fd = new FormData();
+      fd.append('purpose', targetPurpose);
+      fd.append('record_id', targetRecord);
+      for (const f of Array.from(files)) {
+        fd.append('attachments', f, f.name);
       }
-
       const fileNames = Array.from(files)
         .map((f) => f.name)
         .join(', ');
-      stage2EvidenceStore.record({
-        chapterId,
-        purpose,
-        recordId: targetRecord,
-        label: `${recordLabel} — ${fileNames}`,
-        version,
-        uploadedAt: new Date().toISOString(),
-        binding,
-      });
+      const { result } = await apiMutate<EvidenceUploadApiResult>(
+        'POST',
+        `/api/v1/chapters/${targetChapter}/evidence`,
+        fd,
+      );
+      const data = result.data;
+      const version = data.version ?? 1;
+      const binding: Stage2EvidenceByteBinding = {
+        evidence_id: data.evidence_id,
+        version_id: data.version_id,
+        attachments: data.attachments,
+      };
+
+      const isCurrentContext =
+        contextRef.current.chapterId === targetChapter &&
+        contextRef.current.purpose === targetPurpose &&
+        contextRef.current.recordId.trim() === targetRecord &&
+        uploadGenRef.current === gen;
+
+      if (contextRef.current.chapterId === targetChapter) {
+        stage2EvidenceStore.record({
+          chapterId: targetChapter,
+          purpose: targetPurpose,
+          recordId: targetRecord,
+          label: `${targetLabel} — ${fileNames}`,
+          version,
+          uploadedAt: new Date().toISOString(),
+          binding,
+        });
+      }
+      if (!isCurrentContext) {
+        return;
+      }
       onSelectBinding(binding);
       setFiles(null);
+      setFileInputKey((k) => k + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to upload supporting document.');
+      if (
+        contextRef.current.chapterId === targetChapter &&
+        contextRef.current.purpose === targetPurpose &&
+        contextRef.current.recordId.trim() === targetRecord &&
+        uploadGenRef.current === gen
+      ) {
+        setError(err instanceof Error ? err.message : 'Unable to upload supporting document.');
+      }
     } finally {
-      setBusy(false);
+      if (uploadGenRef.current === gen) {
+        setBusy(false);
+      }
     }
   }
 
@@ -143,7 +168,7 @@ export function Stage2EvidenceUploader({
     <div className="s2-evidence-box">
       <div className="s2-evidence-grid">
         <SearchableRecordPicker<SessionEvidenceRecord>
-          id={`s2-ev-picker-${purpose}`}
+          id={`s2-ev-picker-${purpose}-${pickerUid}`}
           label={`Bound Evidence (${purpose.replaceAll('_', ' ')})`}
           valueId={selectedBinding?.evidence_id ?? ''}
           options={pickerOptions}
@@ -159,6 +184,7 @@ export function Stage2EvidenceUploader({
           </label>
           <div className="s2-file-row">
             <input
+              key={fileInputKey}
               id={fileInputId}
               type="file"
               multiple

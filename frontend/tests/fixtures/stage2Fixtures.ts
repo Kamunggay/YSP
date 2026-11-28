@@ -1,7 +1,7 @@
 import {
   registerStage2PreviewAdapter,
   type Stage2PreviewRequest,
-} from '../api/stage2Client.ts';
+} from '../../src/api/stage2Client.ts';
 import type {
   AllocationQueueListResponse,
   ControlReportResponse,
@@ -30,10 +30,10 @@ import type {
   RepfRelatedRecord,
   ReplenishmentNeedItem,
   SupplierSelection,
-} from '../api/stage2Types.ts';
-import type { Stage1EventNotice } from '../api/types.ts';
-import { ContractApiError, newActionKey } from '../api/client.ts';
-import { stage2EvidenceStore } from '../state/stage2EvidenceStore.ts';
+} from '../../src/api/stage2Types.ts';
+import type { Stage1EventNotice } from '../../src/api/types.ts';
+import { ContractApiError, newActionKey } from '../../src/api/client.ts';
+import { stage2EvidenceStore } from '../../src/state/stage2EvidenceStore.ts';
 
 interface ChapterPreviewState {
   chapterId: string;

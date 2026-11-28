@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { formatManilaTime } from '../api/client.ts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { actionBlockReason } from '../api/access.ts';
+import { ContractApiError, formatManilaTime } from '../api/client.ts';
 import {
+  currentManilaIsoDate,
   listAllocationQueue,
   listOfficerAlerts,
+  openSandboxedPrintableHtml,
   printControlReport,
   printInventoryReport,
   printProcurementReport,
@@ -35,7 +38,6 @@ interface Stage2AlertsReportsWorkspaceProps {
   refreshSignal: number;
   domainSignal?: number;
   chapterAccess: ChapterAccessSnapshot | null;
-  previewEnabled: boolean;
   onHandoffAllocation: (opts: {
     targetTab: 'reservations_holds' | 'actual_issues';
     rfId: string;
@@ -46,11 +48,9 @@ interface Stage2AlertsReportsWorkspaceProps {
 }
 
 function defaultDateRange(): { from: string; to: string } {
-  const end = new Date();
-  const start = new Date(end.getTime() - 30 * 86_400_000);
   return {
-    from: start.toISOString().slice(0, 10),
-    to: end.toISOString().slice(0, 10),
+    from: currentManilaIsoDate(-30),
+    to: currentManilaIsoDate(0),
   };
 }
 
@@ -59,13 +59,24 @@ export function Stage2AlertsReportsWorkspace({
   refreshSignal,
   domainSignal = 0,
   chapterAccess,
-  previewEnabled,
   onHandoffAllocation,
   onNavigateTab,
   onBackToDashboard,
 }: Stage2AlertsReportsWorkspaceProps) {
-  const candidates = useStage2Candidates(chapterId, refreshSignal, previewEnabled, chapterAccess);
+  const candidates = useStage2Candidates(chapterId, refreshSignal, chapterAccess);
   const initialRange = defaultDateRange();
+  const canReadAlerts = !actionBlockReason(chapterAccess, 'alerts.read');
+  const canReadQueue = !actionBlockReason(chapterAccess, 'allocation_queue.read');
+  const canReadInvReport = !actionBlockReason(chapterAccess, 'reports.inventory.read');
+  const canReadProcReport = !actionBlockReason(chapterAccess, 'reports.procurement.read');
+  const canReadCtrlReport = !actionBlockReason(chapterAccess, 'reports.control.read');
+  const alertsGenRef = useRef(0);
+  const queueGenRef = useRef(0);
+  const reportGenRef = useRef(0);
+  const activeChapterRef = useRef(chapterId);
+  useEffect(() => {
+    activeChapterRef.current = chapterId;
+  }, [chapterId]);
 
   const [subTab, setSubTab] = useState<'alerts' | 'allocation_queue' | 'reports'>('alerts');
 
@@ -74,6 +85,7 @@ export function Stage2AlertsReportsWorkspace({
   const [severityFilter, setSeverityFilter] = useState('');
   const [dutyFilter, setDutyFilter] = useState('');
   const [alerts, setAlerts] = useState<OfficerAlert[]>([]);
+  const [alertsCursor, setAlertsCursor] = useState<string | null>(null);
   const [matchedDuties, setMatchedDuties] = useState<string[]>([]);
 
   // Allocation Queue state
@@ -82,6 +94,7 @@ export function Stage2AlertsReportsWorkspace({
   const [queueUnitId, setQueueUnitId] = useState('');
   const [eligibleOnly, setEligibleOnly] = useState(false);
   const [queueRows, setQueueRows] = useState<AllocationQueueEntry[]>([]);
+  const [queueCursor, setQueueCursor] = useState<string | null>(null);
   const [queuePolicyNote, setQueuePolicyNote] = useState<string>('');
 
   // Reports state
@@ -106,56 +119,146 @@ export function Stage2AlertsReportsWorkspace({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  const loadAlerts = useCallback(async () => {
-    try {
-      const res = await listOfficerAlerts(chapterId, {
-        alert_type: (alertTypeFilter || undefined) as OfficerAlertType | undefined,
-        severity: (severityFilter || undefined) as OfficerAlertSeverity | undefined,
-        responsible_duty: (dutyFilter || undefined) as Stage2Duty | undefined,
-        limit: 50,
-      });
-      setAlerts(res.data);
-      setMatchedDuties(res.caller_matched_duties);
-    } catch (err) {
-      setError(err);
-    }
-  }, [alertTypeFilter, chapterId, dutyFilter, severityFilter]);
+  const loadAlerts = useCallback(
+    async (cursor?: string | null, allowRetry = true) => {
+      if (!canReadAlerts) {
+        setAlerts([]);
+        setAlertsCursor(null);
+        setMatchedDuties([]);
+        return;
+      }
+      const targetChapter = chapterId;
+      const gen = cursor ? alertsGenRef.current : ++alertsGenRef.current;
+      const guard = () =>
+        activeChapterRef.current === targetChapter && alertsGenRef.current === gen;
+      try {
+        const res = await listOfficerAlerts(targetChapter, {
+          alert_type: (alertTypeFilter || undefined) as OfficerAlertType | undefined,
+          severity: (severityFilter || undefined) as OfficerAlertSeverity | undefined,
+          responsible_duty: (dutyFilter || undefined) as Stage2Duty | undefined,
+          limit: 50,
+          cursor: cursor ?? undefined,
+        });
+        if (!guard()) return;
+        setAlerts((prev) => (cursor ? [...prev, ...res.data] : res.data));
+        setAlertsCursor(res.page?.next_cursor ?? null);
+        setMatchedDuties(res.caller_matched_duties);
+      } catch (err) {
+        if (!guard()) return;
+        if (err instanceof ContractApiError && err.code === 'snapshot_stale' && cursor && allowRetry) {
+          setAlertsCursor(null);
+          const fresh = await listOfficerAlerts(targetChapter, {
+            alert_type: (alertTypeFilter || undefined) as OfficerAlertType | undefined,
+            severity: (severityFilter || undefined) as OfficerAlertSeverity | undefined,
+            responsible_duty: (dutyFilter || undefined) as Stage2Duty | undefined,
+            limit: 50,
+          });
+          if (!guard()) return;
+          setAlerts(fresh.data);
+          setAlertsCursor(fresh.page?.next_cursor ?? null);
+          setMatchedDuties(fresh.caller_matched_duties);
+          return;
+        }
+        setError(err);
+      }
+    },
+    [alertTypeFilter, canReadAlerts, chapterId, dutyFilter, severityFilter],
+  );
 
-  const loadQueue = useCallback(async () => {
-    try {
-      const res = await listAllocationQueue(chapterId, {
-        variant_id: queueVariantId || undefined,
-        rf_id: queueRfId || undefined,
-        requesting_unit_id: queueUnitId || undefined,
-        eligible_only: eligibleOnly,
-        limit: 50,
-      });
-      setQueueRows(res.data);
-      setQueuePolicyNote(
-        `Policy v${res.allocation_policy.version} · Observed ${formatManilaTime(res.observed_at)} · Advisory ordering only (commit re-verifies Stock & Stage 1 reservation lock)`,
-      );
-    } catch (err) {
-      setError(err);
-    }
-  }, [chapterId, eligibleOnly, queueRfId, queueUnitId, queueVariantId]);
+  const loadQueue = useCallback(
+    async (cursor?: string | null, allowRetry = true) => {
+      if (!canReadQueue) {
+        setQueueRows([]);
+        setQueueCursor(null);
+        setQueuePolicyNote('');
+        return;
+      }
+      const targetChapter = chapterId;
+      const gen = cursor ? queueGenRef.current : ++queueGenRef.current;
+      const guard = () =>
+        activeChapterRef.current === targetChapter && queueGenRef.current === gen;
+      try {
+        const res = await listAllocationQueue(targetChapter, {
+          variant_id: queueVariantId || undefined,
+          rf_id: queueRfId || undefined,
+          requesting_unit_id: queueUnitId || undefined,
+          eligible_only: eligibleOnly,
+          limit: 50,
+          cursor: cursor ?? undefined,
+        });
+        if (!guard()) return;
+        setQueueRows((prev) => (cursor ? [...prev, ...res.data] : res.data));
+        setQueueCursor(res.page?.next_cursor ?? null);
+        setQueuePolicyNote(
+          `Policy v${res.allocation_policy.version} · Observed ${formatManilaTime(res.observed_at)} · Advisory ordering only (commit re-verifies Stock & Stage 1 reservation lock)`,
+        );
+      } catch (err) {
+        if (!guard()) return;
+        if (err instanceof ContractApiError && err.code === 'snapshot_stale' && cursor && allowRetry) {
+          setQueueCursor(null);
+          const fresh = await listAllocationQueue(targetChapter, {
+            variant_id: queueVariantId || undefined,
+            rf_id: queueRfId || undefined,
+            requesting_unit_id: queueUnitId || undefined,
+            eligible_only: eligibleOnly,
+            limit: 50,
+          });
+          if (!guard()) return;
+          setQueueRows(fresh.data);
+          setQueueCursor(fresh.page?.next_cursor ?? null);
+          setQueuePolicyNote(
+            `Policy v${fresh.allocation_policy.version} · Observed ${formatManilaTime(fresh.observed_at)} · Advisory ordering only (commit re-verifies Stock & Stage 1 reservation lock)`,
+          );
+          return;
+        }
+        setError(err);
+      }
+    },
+    [canReadQueue, chapterId, eligibleOnly, queueRfId, queueUnitId, queueVariantId],
+  );
 
   useEffect(() => {
-    void loadAlerts();
+    void loadAlerts(null);
   }, [loadAlerts, refreshSignal, domainSignal]);
 
   useEffect(() => {
-    void loadQueue();
+    void loadQueue(null);
   }, [loadQueue, refreshSignal, domainSignal]);
 
-  async function handleRunReport(alsoPrint = false) {
+  async function handleRunReport(alsoPrint = false, nextCursor?: string | null) {
+    const permitted =
+      (reportKind === 'inventory' && canReadInvReport) ||
+      (reportKind === 'procurement' && canReadProcReport) ||
+      (reportKind === 'control' && canReadCtrlReport);
+    if (!permitted) {
+      setError(
+        new Error(
+          actionBlockReason(
+            chapterAccess,
+            reportKind === 'inventory'
+              ? 'reports.inventory.read'
+              : reportKind === 'procurement'
+                ? 'reports.procurement.read'
+                : 'reports.control.read',
+          ) ?? 'You do not currently hold permission to run this report.',
+        ),
+      );
+      return;
+    }
     const rangeErr = validateReportDateRange(dateFrom, dateTo);
     if (rangeErr) {
       setError(new Error(rangeErr));
       return;
     }
+    const targetChapter = chapterId;
+    const gen = ++reportGenRef.current;
+    const guard = () =>
+      activeChapterRef.current === targetChapter && reportGenRef.current === gen;
     setBusy(true);
     setError(null);
-    setReportPrintHtml(null);
+    if (!nextCursor) {
+      setReportPrintHtml(null);
+    }
     try {
       const common = {
         date_from: dateFrom,
@@ -165,40 +268,92 @@ export function Stage2AlertsReportsWorkspace({
         location_id: reportLocationId || undefined,
       };
       if (reportKind === 'inventory') {
-        const res = await readInventoryReport(chapterId, { ...common, status: invStatus, limit: 50 });
-        setInventoryReport(res);
+        const res = await readInventoryReport(targetChapter, {
+          ...common,
+          status: invStatus,
+          limit: 50,
+          cursor: nextCursor ?? undefined,
+        });
+        if (!guard()) return;
+        setInventoryReport((prev) =>
+          nextCursor && prev ? { ...res, data: [...prev.data, ...res.data] } : res,
+        );
         setProcurementReport(null);
         setControlReport(null);
         if (alsoPrint) {
-          setReportPrintHtml(await printInventoryReport(chapterId, { ...common, status: invStatus }));
+          const html = await printInventoryReport(targetChapter, { ...common, status: invStatus });
+          if (guard()) setReportPrintHtml(html);
         }
       } else if (reportKind === 'procurement') {
-        const res = await readProcurementReport(chapterId, {
+        const res = await readProcurementReport(targetChapter, {
           ...common,
           status: procStatus,
           limit: 50,
+          cursor: nextCursor ?? undefined,
         });
-        setProcurementReport(res);
+        if (!guard()) return;
+        setProcurementReport((prev) =>
+          nextCursor && prev
+            ? {
+                ...res,
+                rf_demand_summary: [...prev.rf_demand_summary, ...res.rf_demand_summary],
+                repf_summary: [...prev.repf_summary, ...res.repf_summary],
+                purchase_order_summary: [
+                  ...prev.purchase_order_summary,
+                  ...res.purchase_order_summary,
+                ],
+              }
+            : res,
+        );
         setInventoryReport(null);
         setControlReport(null);
         if (alsoPrint) {
-          setReportPrintHtml(
-            await printProcurementReport(chapterId, { ...common, status: procStatus }),
-          );
+          const html = await printProcurementReport(targetChapter, {
+            ...common,
+            status: procStatus,
+          });
+          if (guard()) setReportPrintHtml(html);
         }
       } else {
-        const res = await readControlReport(chapterId, { ...common, status: ctrlStatus, limit: 50 });
-        setControlReport(res);
+        const res = await readControlReport(targetChapter, {
+          ...common,
+          status: ctrlStatus,
+          limit: 50,
+          cursor: nextCursor ?? undefined,
+        });
+        if (!guard()) return;
+        setControlReport((prev) =>
+          nextCursor && prev
+            ? {
+                ...res,
+                donation_restrictions: [
+                  ...prev.donation_restrictions,
+                  ...res.donation_restrictions,
+                ],
+                restriction_resolutions: [
+                  ...prev.restriction_resolutions,
+                  ...res.restriction_resolutions,
+                ],
+                overdue_exceptions: [...prev.overdue_exceptions, ...res.overdue_exceptions],
+                audit_history: [...prev.audit_history, ...res.audit_history],
+              }
+            : res,
+        );
         setInventoryReport(null);
         setProcurementReport(null);
         if (alsoPrint) {
-          setReportPrintHtml(await printControlReport(chapterId, { ...common, status: ctrlStatus }));
+          const html = await printControlReport(targetChapter, { ...common, status: ctrlStatus });
+          if (guard()) setReportPrintHtml(html);
         }
       }
     } catch (err) {
-      setError(err);
+      if (guard()) {
+        setError(err);
+      }
     } finally {
-      setBusy(false);
+      if (guard()) {
+        setBusy(false);
+      }
     }
   }
 
@@ -353,6 +508,17 @@ export function Stage2AlertsReportsWorkspace({
                   </button>
                 </div>
               ))}
+              {alertsCursor && (
+                <div className="s2-action-bar">
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary p02-compact-btn"
+                    onClick={() => void loadAlerts(alertsCursor)}
+                  >
+                    Load More Alerts
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -370,7 +536,7 @@ export function Stage2AlertsReportsWorkspace({
             <button
               type="button"
               className="btn-batcave-secondary p02-compact-btn"
-              onClick={() => void loadQueue()}
+              onClick={() => void loadQueue(null)}
             >
               Refresh Queue
             </button>
@@ -508,6 +674,17 @@ export function Stage2AlertsReportsWorkspace({
                   ))}
                 </tbody>
               </table>
+              {queueCursor && (
+                <div className="s2-action-bar">
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary p02-compact-btn"
+                    onClick={() => void loadQueue(queueCursor)}
+                  >
+                    Load More Queue Entries
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -703,6 +880,18 @@ export function Stage2AlertsReportsWorkspace({
                   </tbody>
                 </table>
               </div>
+              {inventoryReport.page.next_cursor && (
+                <div className="s2-action-bar">
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary p02-compact-btn"
+                    disabled={busy}
+                    onClick={() => void handleRunReport(false, inventoryReport.page.next_cursor)}
+                  >
+                    Load More Report Rows
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -744,6 +933,18 @@ export function Stage2AlertsReportsWorkspace({
                   </tbody>
                 </table>
               </div>
+              {procurementReport.page.next_cursor && (
+                <div className="s2-action-bar">
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary p02-compact-btn"
+                    disabled={busy}
+                    onClick={() => void handleRunReport(false, procurementReport.page.next_cursor)}
+                  >
+                    Load More Report Rows
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -785,16 +986,39 @@ export function Stage2AlertsReportsWorkspace({
                   </tbody>
                 </table>
               </div>
+              {controlReport.page.next_cursor && (
+                <div className="s2-action-bar">
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary p02-compact-btn"
+                    disabled={busy}
+                    onClick={() => void handleRunReport(false, controlReport.page.next_cursor)}
+                  >
+                    Load More Report Rows
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {reportPrintHtml && (
-            <iframe
-              sandbox=""
-              title="Stage 2 Printable Report"
-              srcDoc={reportPrintHtml}
-              className="s2-print-frame"
-            />
+            <div className="s2-audit-body">
+              <div className="s2-action-bar">
+                <button
+                  type="button"
+                  className="btn-batcave-primary p02-compact-btn"
+                  onClick={() => openSandboxedPrintableHtml(reportPrintHtml)}
+                >
+                  Open Print / Save PDF Tab
+                </button>
+              </div>
+              <iframe
+                sandbox=""
+                title="Stage 2 Printable Report"
+                srcDoc={reportPrintHtml}
+                className="s2-print-frame"
+              />
+            </div>
           )}
         </section>
       )}

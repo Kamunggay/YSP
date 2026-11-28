@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { actionBlockReason } from '../api/access.ts';
 import { apiGet, buildQuery, formatManilaTime } from '../api/client.ts';
-import { isStage2PreviewActive } from '../api/stage2Client.ts';
 import type { ChapterAccessSnapshot, IntendedUse, SevenStockViews } from '../api/types.ts';
 import { useStage2Candidates } from '../api/useStage2Candidates.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
@@ -57,7 +56,6 @@ export function StockWorkspace({
   const candidates = useStage2Candidates(
     chapterId,
     refreshSignal,
-    isStage2PreviewActive(),
     chapterAccess,
   );
 

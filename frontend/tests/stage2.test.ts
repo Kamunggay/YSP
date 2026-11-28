@@ -3,17 +3,25 @@ import assert from 'node:assert/strict';
 
 import { Stage2NoticeTracker } from '../src/realtime/stage2NoticeRouter.ts';
 import {
+  currentManilaIsoDate,
+  findProcurementOperationByKey,
+  listAllStage2Pages,
   listAllocationQueue,
   listReplenishmentNeeds,
+  localDateTimeToUtcInstant,
+  nowUtcInstant,
   postReceivingReport,
   readPurchaseOrder,
+  registerStage2PreviewAdapter,
   resolveDonationRestriction,
+  settleStage2Tuple,
   validateReportDateRange,
 } from '../src/api/stage2Client.ts';
+import { ContractApiError } from '../src/api/client.ts';
 import {
   resetStage2Preview,
   setStage2PreviewEnabled,
-} from '../src/fixtures/stage2Fixtures.ts';
+} from './fixtures/stage2Fixtures.ts';
 
 const CHAPTER_ID = '60000000-0000-4000-8000-000000000001';
 
@@ -223,4 +231,68 @@ test('Stage 2 preview fixture preserves worked INV-09/INV-10/PO partial RM and A
   } finally {
     resetStage2Preview();
   }
+});
+
+test('Stage 2 client enforces 6-digit UtcInstant formatting, multi-page cursor iteration with stale retry, and clean operation_not_found lookup', async () => {
+  const utcPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
+  assert.match(nowUtcInstant(), utcPattern);
+  assert.match(localDateTimeToUtcInstant('2026-11-28T09:15'), utcPattern);
+  assert.match(currentManilaIsoDate(), /^\d{4}-\d{2}-\d{2}$/);
+
+  // Cursor loop + single snapshot_stale retry
+  let attempt = 0;
+  const rows = await listAllStage2Pages<{ id: string }>(async ({ cursor }) => {
+    attempt += 1;
+    if (attempt === 1) {
+      return { data: [{ id: 'a' }], page: { next_cursor: 'cur-2', snapshot_version: 1 } };
+    }
+    if (attempt === 2 && cursor === 'cur-2') {
+      throw new ContractApiError(409, 'snapshot_stale', 'Restart discovery');
+    }
+    if (!cursor) {
+      return { data: [{ id: 'a2' }], page: { next_cursor: 'cur-3', snapshot_version: 2 } };
+    }
+    return { data: [{ id: 'b2' }], page: { next_cursor: null, snapshot_version: 2 } };
+  });
+  assert.deepEqual(
+    rows.map((r) => r.id),
+    ['a2', 'b2'],
+  );
+
+  // Uniform 404 operation_not_found resolves null while chapter_not_found rethrows
+  registerStage2PreviewAdapter({
+    isEnabled: () => true,
+    async handleJson({ path }) {
+      if (path.includes('missing-op')) {
+        throw new ContractApiError(404, 'operation_not_found', 'Not found');
+      }
+      throw new ContractApiError(404, 'chapter_not_found', 'Denied');
+    },
+    async handleText() {
+      return null;
+    },
+  });
+  try {
+    const missing = await findProcurementOperationByKey(
+      CHAPTER_ID,
+      'createRepf',
+      '00000000-0000-4000-8000-000000000001-missing-op',
+    );
+    assert.equal(missing, null);
+    await assert.rejects(() =>
+      findProcurementOperationByKey(CHAPTER_ID, 'createRepf', '00000000-0000-4000-8000-000000000002'),
+    );
+  } finally {
+    registerStage2PreviewAdapter(null);
+  }
+
+  // settleStage2Tuple preserves fulfilled queries when a sibling endpoint rejects
+  const settled = await settleStage2Tuple([
+    Promise.resolve([{ id: 'need-1' }] as const),
+    Promise.reject(new ContractApiError(404, 'route_not_found', 'Not deployed yet')),
+  ] as const);
+  assert.deepEqual(settled.values[0], [{ id: 'need-1' }]);
+  assert.equal(settled.values[1], undefined);
+  assert.ok(settled.firstError instanceof ContractApiError);
+  assert.equal((settled.firstError as ContractApiError).status, 404);
 });

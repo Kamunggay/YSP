@@ -8,13 +8,17 @@ import {
   closeShortPurchaseOrder,
   createPurchaseOrder,
   createRepfQuotation,
+  currentManilaIsoDate,
   deleteRepfQuotation,
   findProcurementOperationByKey,
+  listAllStage2Pages,
   listPurchaseOrderHistory,
   listPurchaseOrderRelatedRecords,
   listPurchaseOrders,
   listRepfQuotations,
   listRepfs,
+  localDateTimeToUtcInstant,
+  nowUtcInstant,
   printPurchaseOrder,
   proposePurchaseOrderAmendment,
   readProcurementOperation,
@@ -26,7 +30,9 @@ import {
   replacePurchaseOrder,
   replaceRepfQuotation,
   returnPurchaseOrder,
+  settleStage2Tuple,
   submitPurchaseOrder,
+  utcInstantToLocalDateTimeInput,
 } from '../api/stage2Client.ts';
 import type {
   ProcurementOperationName,
@@ -57,7 +63,6 @@ interface QuotationPurchaseOrderWorkspaceProps {
   refreshSignal: number;
   domainSignal?: number;
   chapterAccess: ChapterAccessSnapshot | null;
-  previewEnabled: boolean;
   initialRepfId?: string | null;
   initialPoId?: string | null;
   onNavigateTab: (tab: WorkspaceTab, opts?: { repfId?: string; poId?: string }) => void;
@@ -102,15 +107,21 @@ export function QuotationPurchaseOrderWorkspace({
   refreshSignal,
   domainSignal = 0,
   chapterAccess,
-  previewEnabled,
   initialRepfId = null,
   initialPoId = null,
   onNavigateTab,
   onBackToDashboard,
 }: QuotationPurchaseOrderWorkspaceProps) {
   const formKey = 'stage2_po_editor';
-  const candidates = useStage2Candidates(chapterId, refreshSignal, previewEnabled, chapterAccess);
+  const candidates = useStage2Candidates(chapterId, refreshSignal, chapterAccess);
   const skipSaveRef = useRef(false);
+  const baseGenRef = useRef(0);
+  const quotesGenRef = useRef(0);
+  const detailGenRef = useRef(0);
+  const activeChapterRef = useRef(chapterId);
+  useEffect(() => {
+    activeChapterRef.current = chapterId;
+  }, [chapterId]);
 
   const initialDraft = useMemo<SavedPoDraft>(() => {
     const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
@@ -137,7 +148,7 @@ export function QuotationPurchaseOrderWorkspace({
   const [supplierSubtype, setSupplierSubtype] = useState<SupplierSubtype>('wholesaler');
   const [contactRef, setContactRef] = useState('');
   const [supplierRef, setSupplierRef] = useState('');
-  const [quotedAt, setQuotedAt] = useState(new Date().toISOString().slice(0, 16));
+  const [quotedAt, setQuotedAt] = useState(() => utcInstantToLocalDateTimeInput());
   const [validUntil, setValidUntil] = useState('');
   const [leadTimeDays, setLeadTimeDays] = useState('5');
   const [availabilitySummary, setAvailabilitySummary] = useState('');
@@ -150,13 +161,15 @@ export function QuotationPurchaseOrderWorkspace({
   const [quoteUnitPrice, setQuoteUnitPrice] = useState('240.00');
   const [quoteLineNotes, setQuoteLineNotes] = useState('');
 
-  // Supplier selection state
+  // Supplier selection state (captures real SupplierSelection UUID returned on commit)
   const [selectionQuoteId, setSelectionQuoteId] = useState('');
   const [comparableIds, setComparableIds] = useState<string[]>([]);
   const [selectionRationale, setSelectionRationale] = useState('');
   const [waiverEnabled, setWaiverEnabled] = useState(false);
   const [waiverReason, setWaiverReason] = useState('');
   const [policyHint, setPolicyHint] = useState<string | null>(null);
+  const [selectionIdByRepf, setSelectionIdByRepf] = useState<Record<string, string>>({});
+  const [poSupplierSelectionId, setPoSupplierSelectionId] = useState('');
 
   // Purchase Order list & detail state
   const [poStatusFilter, setPoStatusFilter] = useState('');
@@ -175,7 +188,7 @@ export function QuotationPurchaseOrderWorkspace({
     initialDraft.deliveryLocation ?? 'Main Chapter Stockroom, Cebu City',
   );
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(
-    initialDraft.expectedDeliveryDate ?? '2026-12-10',
+    initialDraft.expectedDeliveryDate ?? currentManilaIsoDate(7),
   );
   const [poPaymentTerms, setPoPaymentTerms] = useState(
     initialDraft.paymentAndDeliveryTerms ?? '50% upon delivery acceptance, 50% net 15 days',
@@ -200,37 +213,68 @@ export function QuotationPurchaseOrderWorkspace({
     operationId?: string;
   } | null>(null);
 
+  const canReadRepfs = !actionBlockReason(chapterAccess, 'repf.read');
+  const canReadQuotations = !actionBlockReason(chapterAccess, 'quotation.read');
+  const canReadPos = !actionBlockReason(chapterAccess, 'po.read');
+  const canReadHistory = !actionBlockReason(chapterAccess, 'history.read');
   const canQuote = !actionBlockReason(chapterAccess, 'quotation.manage');
-  const canSelectSupplier = !actionBlockReason(chapterAccess, 'supplier_selection.record');
-  const canPreparePo = !actionBlockReason(chapterAccess, 'po.prepare');
+  const canSelectSupplier = !actionBlockReason(chapterAccess, 'quotation.select');
+  const canPreparePo = !actionBlockReason(chapterAccess, 'po.draft');
   const canSubmitPo = !actionBlockReason(chapterAccess, 'po.submit');
   const canApprovePo = !actionBlockReason(chapterAccess, 'po.approve');
-  const canReturnPo = !actionBlockReason(chapterAccess, 'po.return');
-  const canRejectPo = !actionBlockReason(chapterAccess, 'po.reject');
   const canAckPo = !actionBlockReason(chapterAccess, 'po.acknowledge');
-  const canAmendPo = !actionBlockReason(chapterAccess, 'po.amend');
-  const canApproveAmend = !actionBlockReason(chapterAccess, 'po.approve_amendment');
+  const canAmendPo = !actionBlockReason(chapterAccess, 'po.amend_propose');
+  const canApproveAmend = !actionBlockReason(chapterAccess, 'po.amend_approve');
   const canCloseShortPo = !actionBlockReason(chapterAccess, 'po.close_short');
   const canCancelPo = !actionBlockReason(chapterAccess, 'po.cancel');
 
+  const handleSelectPoChange = useCallback((nextPoId: string) => {
+    setSelectedPoId((cur) => {
+      if (cur === nextPoId) return cur;
+      detailGenRef.current += 1;
+      setPoActionReason('');
+      setAmendReason('');
+      setAckRef('');
+      setAckDate('');
+      setAckNotes('');
+      setAckEvidence(null);
+      return nextPoId;
+    });
+  }, []);
+
   const loadBase = useCallback(async () => {
-    try {
-      const [repfRes, poRes] = await Promise.all([
-        listRepfs(chapterId, { limit: 50 }),
-        listPurchaseOrders(chapterId, {
-          status: (poStatusFilter || undefined) as PurchaseOrderStatus | undefined,
-          q: poSearch.trim() || undefined,
-          limit: 50,
-        }),
-      ]);
-      const eligibleRepfs = repfRes.data.filter(
+    const targetChapter = chapterId;
+    const gen = ++baseGenRef.current;
+    const guard = () =>
+      activeChapterRef.current === targetChapter && baseGenRef.current === gen;
+    const {
+      values: [repfRows, poRows],
+      firstError,
+    } = await settleStage2Tuple([
+      canReadRepfs
+        ? listAllStage2Pages((q) => listRepfs(targetChapter, q), { shouldContinue: guard })
+        : Promise.resolve([] as Repf[]),
+      canReadPos
+        ? listAllStage2Pages(
+            (q) =>
+              listPurchaseOrders(targetChapter, {
+                ...q,
+                status: (poStatusFilter || undefined) as PurchaseOrderStatus | undefined,
+                q: poSearch.trim() || undefined,
+              }),
+            { shouldContinue: guard },
+          )
+        : Promise.resolve([] as PurchaseOrder[]),
+    ]);
+    if (!guard()) return;
+    if (repfRows !== undefined) {
+      const eligibleRepfs = repfRows.filter(
         (r) =>
           r.status === 'approved' ||
           r.status === 'partially_ordered' ||
           r.status === 'ordered',
       );
       setRepfs(eligibleRepfs);
-      setPurchaseOrders(poRes.data);
       setSelectedRepfId((cur) => {
         if (initialRepfId && eligibleRepfs.some((r) => r.id === initialRepfId)) {
           return initialRepfId;
@@ -240,63 +284,115 @@ export function QuotationPurchaseOrderWorkspace({
         }
         return eligibleRepfs[0]?.id ?? '';
       });
+    }
+    if (poRows !== undefined) {
+      setPurchaseOrders(poRows);
+      if (poRows.length > 0) {
+        setSelectionIdByRepf((prev) => {
+          const next = { ...prev };
+          for (const po of poRows) {
+            if (!next[po.repf_id]) {
+              next[po.repf_id] = po.supplier_selection_id;
+            }
+          }
+          return next;
+        });
+      }
       setSelectedPoId((cur) => {
-        if (initialPoId && poRes.data.some((p) => p.id === initialPoId)) {
+        if (initialPoId && poRows.some((p) => p.id === initialPoId)) {
           return initialPoId;
         }
-        if (cur && poRes.data.some((p) => p.id === cur)) {
+        if (cur && poRows.some((p) => p.id === cur)) {
           return cur;
         }
-        return poRes.data[0]?.id ?? '';
+        return poRows[0]?.id ?? '';
       });
-    } catch (err) {
-      setError(err);
     }
-  }, [chapterId, initialPoId, initialRepfId, poSearch, poStatusFilter]);
+    if (firstError !== null) {
+      setError(firstError);
+    }
+  }, [canReadPos, canReadRepfs, chapterId, initialPoId, initialRepfId, poSearch, poStatusFilter]);
 
   const loadQuotations = useCallback(
     async (repfId: string) => {
-      if (!repfId) {
+      if (!repfId || !canReadQuotations) {
         setQuotations([]);
         return;
       }
+      const targetChapter = chapterId;
+      const gen = ++quotesGenRef.current;
+      const guard = () =>
+        activeChapterRef.current === targetChapter && quotesGenRef.current === gen;
       try {
-        const res = await listRepfQuotations(chapterId, repfId, { limit: 50 });
-        setQuotations(res.data);
-        setComparableIds(res.data.map((q) => q.id));
-        const selected = res.data.find((q) => q.is_selected) ?? res.data[0];
-        if (selected) {
-          setSelectionQuoteId(selected.id);
-        }
+        const rows = await listAllStage2Pages(
+          (q) => listRepfQuotations(targetChapter, repfId, q),
+          { shouldContinue: guard },
+        );
+        if (!guard()) return;
+        setQuotations(rows);
+        const validIds = new Set(rows.map((q) => q.id));
+        setComparableIds((prev) => {
+          const retained = prev.filter((id) => validIds.has(id));
+          return retained.length > 0 ? retained : rows.map((q) => q.id);
+        });
+        const selected = rows.find((q) => q.is_selected) ?? rows[0];
+        setSelectionQuoteId((cur) =>
+          cur && validIds.has(cur) ? cur : (selected?.id ?? ''),
+        );
       } catch (err) {
-        setError(err);
+        if (guard()) {
+          setError(err);
+        }
       }
     },
-    [chapterId],
+    [canReadQuotations, chapterId],
   );
 
   const loadSelectedPoDetail = useCallback(
     async (poId: string) => {
-      if (!poId) {
+      if (!poId || !canReadPos) {
         setSelectedPo(null);
         setPoHistory([]);
         setPoRelated([]);
         return;
       }
-      try {
-        const [detail, histRes, relRes] = await Promise.all([
-          readPurchaseOrder(chapterId, poId),
-          listPurchaseOrderHistory(chapterId, poId, { limit: 50 }),
-          listPurchaseOrderRelatedRecords(chapterId, poId, { limit: 50 }),
-        ]);
+      const targetChapter = chapterId;
+      const gen = ++detailGenRef.current;
+      const guard = () =>
+        activeChapterRef.current === targetChapter && detailGenRef.current === gen;
+      const {
+        values: [detail, histRows, relRows],
+        firstError,
+      } = await settleStage2Tuple([
+        readPurchaseOrder(targetChapter, poId),
+        canReadHistory
+          ? listAllStage2Pages((q) => listPurchaseOrderHistory(targetChapter, poId, q), {
+              shouldContinue: guard,
+            })
+          : Promise.resolve([] as PurchaseOrderHistoryEntry[]),
+        listAllStage2Pages((q) => listPurchaseOrderRelatedRecords(targetChapter, poId, q), {
+          shouldContinue: guard,
+        }),
+      ]);
+      if (!guard()) return;
+      if (detail !== undefined) {
         setSelectedPo(detail);
-        setPoHistory(histRes.data);
-        setPoRelated(relRes.data);
-      } catch (err) {
-        setError(err);
+        setSelectionIdByRepf((prev) => ({
+          ...prev,
+          [detail.repf_id]: prev[detail.repf_id] || detail.supplier_selection_id,
+        }));
+      }
+      if (histRows !== undefined) {
+        setPoHistory(histRows);
+      }
+      if (relRows !== undefined) {
+        setPoRelated(relRows);
+      }
+      if (firstError !== null) {
+        setError(firstError);
       }
     },
-    [chapterId],
+    [canReadHistory, canReadPos, chapterId],
   );
 
   useEffect(() => {
@@ -418,21 +514,26 @@ export function QuotationPurchaseOrderWorkspace({
   );
 
   function handleSelectRepfChange(nextRepfId: string) {
+    quotesGenRef.current += 1;
     setSelectedRepfId(nextRepfId);
-    // Clear dependent quotation/line choices when parent RepF changes.
+    // Clear dependent quotation/line/evidence choices when parent RepF changes.
     setEditingQuoteId(null);
+    setQuoteEvidence(null);
     setSelectionQuoteId('');
+    setComparableIds([]);
     setQuoteRepfLineId('');
     setPolicyHint(null);
+    setPoSupplierSelectionId(selectionIdByRepf[nextRepfId] ?? '');
   }
 
   function handleSeedPoFromSelection() {
-    const selectedQ = quotations.find((q) => q.id === selectionQuoteId || q.is_selected);
+    const selectedQ = quotations.find((q) => q.is_selected) ?? quotations.find((q) => q.id === selectionQuoteId);
     if (!activeRepf || !selectedQ) {
       setError(new Error('Record a supplier selection on the RepF before creating a PO.'));
       return;
     }
     setEditingPoId(null);
+    setPoSupplierSelectionId(selectionIdByRepf[activeRepf.id] ?? '');
     setPoPaymentTerms(selectedQ.payment_and_delivery_terms);
     setPoLines(
       selectedQ.lines.map((ql) => ({
@@ -482,7 +583,7 @@ export function QuotationPurchaseOrderWorkspace({
           contact_reference: contactRef.trim(),
           supplier_reference: supplierRef.trim() || null,
         },
-        quoted_at: quotedAt ? `${quotedAt}:00.000000Z` : new Date().toISOString(),
+        quoted_at: localDateTimeToUtcInstant(quotedAt),
         valid_until: validUntil.trim() || null,
         lead_time_days: Number.parseInt(leadTimeDays, 10) || 1,
         availability_summary: availabilitySummary.trim(),
@@ -526,6 +627,7 @@ export function QuotationPurchaseOrderWorkspace({
         setStatusMessage(`Recorded quotation from ${data.result.supplier.supplier_name}.`);
       }
       setEditingQuoteId(null);
+      setQuoteEvidence(null);
       await loadQuotations(activeRepf.id);
     } catch (err) {
       setError(err);
@@ -550,12 +652,19 @@ export function QuotationPurchaseOrderWorkspace({
         emergency_waiver:
           waiverEnabled && waiverReason.trim() ? { reason: waiverReason.trim() } : null,
       });
+      setSelectionIdByRepf((prev) => ({
+        ...prev,
+        [activeRepf.id]: data.result.id,
+      }));
+      setPoSupplierSelectionId(data.result.id);
       setLastOpHint({
         operationName: 'recordSupplierSelection',
         actionKey,
         operationId: data.operation_id,
       });
-      setStatusMessage('Supplier selection recorded under chapter quotation policy.');
+      setStatusMessage(
+        `Supplier selection recorded (Selection ${data.result.id.slice(0, 8)}…).`,
+      );
       await loadQuotations(activeRepf.id);
     } catch (err) {
       if (
@@ -575,7 +684,16 @@ export function QuotationPurchaseOrderWorkspace({
   async function handleSavePo(e: React.FormEvent) {
     e.preventDefault();
     if (!activeRepf) return;
-    const selectedQ = quotations.find((q) => q.is_selected) ?? quotations[0];
+    const effectiveSelectionId =
+      poSupplierSelectionId.trim() || selectionIdByRepf[activeRepf.id] || '';
+    if (!editingPoId && !effectiveSelectionId) {
+      setError(
+        new Error(
+          'Record Supplier Selection on Tab 1 first (or enter the committed Supplier Selection UUID) before creating a Purchase Order.',
+        ),
+      );
+      return;
+    }
     setBusy(true);
     setError(null);
     setStatusMessage(null);
@@ -610,7 +728,7 @@ export function QuotationPurchaseOrderWorkspace({
       } else {
         const { data, actionKey } = await createPurchaseOrder(chapterId, {
           repf_id: activeRepf.id,
-          supplier_selection_id: selectedQ?.id ?? selectionQuoteId,
+          supplier_selection_id: effectiveSelectionId,
           delivery_location: deliveryLocation.trim(),
           expected_delivery_date: expectedDeliveryDate,
           payment_and_delivery_terms: poPaymentTerms.trim(),
@@ -1054,7 +1172,10 @@ export function QuotationPurchaseOrderWorkspace({
                   <button
                     type="button"
                     className="btn-batcave-secondary p02-compact-btn"
-                    onClick={() => setEditingQuoteId(null)}
+                    onClick={() => {
+                      setEditingQuoteId(null);
+                      setQuoteEvidence(null);
+                    }}
                   >
                     Cancel Edit
                   </button>
@@ -1101,7 +1222,7 @@ export function QuotationPurchaseOrderWorkspace({
                 label="Select Purchase Order"
                 valueId={selectedPoId}
                 options={poOptions}
-                onSelect={(opt) => setSelectedPoId(opt?.id ?? '')}
+                onSelect={(opt) => handleSelectPoChange(opt?.id ?? '')}
                 placeholder="Search PO reference or supplier..."
               />
               <div className="form-group">
@@ -1290,7 +1411,7 @@ export function QuotationPurchaseOrderWorkspace({
                       <button
                         type="button"
                         className="btn-batcave-secondary p02-compact-btn"
-                        disabled={!canReturnPo || busy || !poActionReason.trim()}
+                        disabled={!canApprovePo || busy || !poActionReason.trim()}
                         onClick={() =>
                           void runPoMutation(
                             'returnPurchaseOrder',
@@ -1309,7 +1430,7 @@ export function QuotationPurchaseOrderWorkspace({
                       <button
                         type="button"
                         className="btn-batcave-secondary p02-compact-btn"
-                        disabled={!canRejectPo || busy || !poActionReason.trim()}
+                        disabled={!canApprovePo || busy || !poActionReason.trim()}
                         onClick={() =>
                           void runPoMutation(
                             'rejectPurchaseOrder',
@@ -1436,7 +1557,7 @@ export function QuotationPurchaseOrderWorkspace({
                                 expected_version: selectedPo.version,
                                 expected_material_version: selectedPo.material_version,
                                 supplier_confirmation_reference: ackRef.trim() || null,
-                                acknowledged_at: new Date().toISOString(),
+                                acknowledged_at: nowUtcInstant(),
                                 revised_expected_delivery_date: ackDate || null,
                                 notes: ackNotes.trim() || null,
                                 evidence: ackEvidence,
@@ -1497,6 +1618,20 @@ export function QuotationPurchaseOrderWorkspace({
               {editingPoId ? 'Edit Draft Purchase Order' : 'Create / Propose PO Changes'}
             </h3>
             <form onSubmit={(e) => void handleSavePo(e)} className="s2-form-stack">
+              {!editingPoId && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="po-supplier-sel-id">
+                    Committed Supplier Selection UUID (from Tab 1 Record Selection)
+                  </label>
+                  <input
+                    id="po-supplier-sel-id"
+                    className="form-control"
+                    value={poSupplierSelectionId || (activeRepf ? (selectionIdByRepf[activeRepf.id] ?? '') : '')}
+                    onChange={(e) => setPoSupplierSelectionId(e.target.value)}
+                    placeholder="Auto-filled when recording supplier selection on Tab 1..."
+                  />
+                </div>
+              )}
               <div className="s2-grid-3">
                 <div className="form-group">
                   <label className="form-label">Delivery Location</label>
@@ -1663,6 +1798,7 @@ export function QuotationPurchaseOrderWorkspace({
 
           {selectedPo && (
             <Stage2AuditPanels
+              recordId={selectedPo.id}
               title={selectedPo.po_reference ?? 'Draft Purchase Order'}
               recordVersion={selectedPo.version}
               history={poHistory.map((h) => ({
@@ -1697,10 +1833,16 @@ export function QuotationPurchaseOrderWorkspace({
               }}
               recoveryOperations={[
                 { value: 'createPurchaseOrder', label: 'Create PO Draft' },
+                { value: 'replacePurchaseOrder', label: 'Replace PO Draft' },
                 { value: 'submitPurchaseOrder', label: 'Submit PO' },
                 { value: 'approvePurchaseOrder', label: 'Approve & Issue PO' },
+                { value: 'returnPurchaseOrder', label: 'Return PO' },
+                { value: 'rejectPurchaseOrder', label: 'Reject PO' },
+                { value: 'recordPurchaseOrderAcknowledgment', label: 'Supplier Acknowledgment' },
                 { value: 'proposePurchaseOrderAmendment', label: 'Propose PO Amendment' },
+                { value: 'approvePurchaseOrderAmendment', label: 'Approve PO Amendment' },
                 { value: 'closeShortPurchaseOrder', label: 'Close Short PO' },
+                { value: 'cancelPurchaseOrder', label: 'Cancel PO' },
               ]}
               onLookupByActionKey={(op, key) =>
                 findProcurementOperationByKey(chapterId, op as ProcurementOperationName, key)

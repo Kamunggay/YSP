@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { apiGet } from '../api/client.ts';
+import { actionBlockReason } from './access.ts';
+import { ContractApiError } from './client.ts';
+import { fetchAllAuthorizedPages } from './pagination.ts';
 import type { SearchablePickerOption } from '../components/SearchableRecordPicker.tsx';
-import type { ChapterAccessSnapshot } from '../api/types.ts';
+import type { ChapterAccessSnapshot } from './types.ts';
 
 export interface CandidateCatalogueItem {
   id: string;
@@ -71,6 +73,7 @@ export interface CandidateStockLot {
 
 export interface Stage2CandidatesState {
   loading: boolean;
+  error: unknown;
   items: CandidateCatalogueItem[];
   variants: CandidateCatalogueVariant[];
   units: CandidateCatalogueUnit[];
@@ -93,105 +96,13 @@ export interface Stage2CandidatesState {
   refresh: () => Promise<void>;
 }
 
-const PREVIEW_CANDIDATE_DEFAULTS = {
-  items: [
-    { id: '95000000-0000-4000-8000-000000000050', code: 'SHIRT', name: 'Chapter Shirt', is_active: true },
-    { id: '95000000-0000-4000-8000-000000000060', code: 'BOTTLE', name: 'Reusable Bottle 500ml', is_active: true },
-    { id: '95000000-0000-4000-8000-000000000070', code: 'KIT', name: 'First Aid Field Kit', is_active: true },
-  ] satisfies CandidateCatalogueItem[],
-  variants: [
-    {
-      id: '95000000-0000-4000-8000-000000000051',
-      item_id: '95000000-0000-4000-8000-000000000050',
-      code: 'SHIRT-M',
-      label: 'Chapter Shirt / Medium',
-      default_unit_id: '95000000-0000-4000-8000-000000000052',
-      is_active: true,
-    },
-    {
-      id: '95000000-0000-4000-8000-000000000061',
-      item_id: '95000000-0000-4000-8000-000000000060',
-      code: 'BOTTLE-500',
-      label: 'Reusable Bottle / 500ml',
-      default_unit_id: '95000000-0000-4000-8000-000000000052',
-      is_active: true,
-    },
-    {
-      id: '95000000-0000-4000-8000-000000000071',
-      item_id: '95000000-0000-4000-8000-000000000070',
-      code: 'KIT-AID',
-      label: 'First Aid Field Kit / Standard',
-      default_unit_id: '95000000-0000-4000-8000-000000000053',
-      is_active: true,
-    },
-  ] satisfies CandidateCatalogueVariant[],
-  units: [
-    { id: '95000000-0000-4000-8000-000000000052', code: 'PCS', label: 'Pieces', quantity_scale: 0, is_active: true },
-    { id: '95000000-0000-4000-8000-000000000053', code: 'KIT', label: 'Kits', quantity_scale: 0, is_active: true },
-  ] satisfies CandidateCatalogueUnit[],
-  locations: [
-    {
-      id: '61000000-0000-4000-8000-000000000001',
-      code: 'STR-MAIN',
-      name: 'Main Chapter Stockroom',
-      location_type: 'stockroom',
-      is_active: true,
-    },
-    {
-      id: '61000000-0000-4000-8000-000000000002',
-      code: 'STR-HOLD',
-      name: 'Receiving Inspection & Quarantine Cage',
-      location_type: 'stockroom',
-      is_active: true,
-    },
-  ] satisfies CandidateLocation[],
-  rfs: [
-    {
-      id: '91000000-0000-4000-8000-000000000001',
-      reference: 'RF-2026-0001',
-      status: 'approved',
-      material_version: 2,
-      requesting_unit_id: '62000000-0000-4000-8000-000000000001',
-      event_id: '63000000-0000-4000-8000-000000000001',
-      needed_at: '2026-12-03T08:00:00.000000Z',
-      lines: [
-        {
-          id: '91000000-0000-4000-8000-000000000011',
-          variant_id: '95000000-0000-4000-8000-000000000051',
-          unit_id: '95000000-0000-4000-8000-000000000052',
-          approved_quantity: '45',
-          unreserved_outstanding_quantity: '15',
-        },
-      ],
-    },
-    {
-      id: '91000000-0000-4000-8000-000000000002',
-      reference: 'RF-2026-0002',
-      status: 'approved',
-      material_version: 1,
-      requesting_unit_id: '62000000-0000-4000-8000-000000000002',
-      event_id: null,
-      needed_at: '2026-12-05T08:00:00.000000Z',
-      lines: [
-        {
-          id: '91000000-0000-4000-8000-000000000021',
-          variant_id: '95000000-0000-4000-8000-000000000051',
-          unit_id: '95000000-0000-4000-8000-000000000052',
-          approved_quantity: '10',
-          unreserved_outstanding_quantity: '10',
-        },
-      ],
-    },
-  ] satisfies CandidateInternalRf[],
-};
-
 export function useStage2Candidates(
   chapterId: string,
   refreshSignal: number,
-  previewEnabled: boolean,
   chapterAccess: ChapterAccessSnapshot | null,
 ): Stage2CandidatesState {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   const [items, setItems] = useState<CandidateCatalogueItem[]>([]);
   const [variants, setVariants] = useState<CandidateCatalogueVariant[]>([]);
   const [units, setUnits] = useState<CandidateCatalogueUnit[]>([]);
@@ -199,66 +110,102 @@ export function useStage2Candidates(
   const [rfs, setRfs] = useState<CandidateInternalRf[]>([]);
   const [lots, setLots] = useState<CandidateStockLot[]>([]);
   const generationRef = useRef(0);
+  const activeChapterRef = useRef(chapterId);
+  useEffect(() => {
+    activeChapterRef.current = chapterId;
+  }, [chapterId]);
+
+  const canReadCatalogue = !actionBlockReason(chapterAccess, 'catalogue.read');
+  const canReadRf = !actionBlockReason(chapterAccess, 'rf.read');
+  const canReadStock = !actionBlockReason(chapterAccess, 'stock.read');
+
+  useEffect(() => {
+    // Clear previous chapter projections immediately when chapter changes.
+    generationRef.current += 1;
+    setItems([]);
+    setVariants([]);
+    setUnits([]);
+    setLocations([]);
+    setRfs([]);
+    setLots([]);
+    setError(null);
+  }, [chapterId]);
 
   const loadCandidates = useCallback(async () => {
     if (!chapterId) {
       return;
     }
+    const targetChapter = chapterId;
     const generation = generationRef.current + 1;
     generationRef.current = generation;
     setLoading(true);
+    setError(null);
 
-    async function safeList<T>(path: string, fallback: T[]): Promise<T[]> {
+    const guard = () =>
+      activeChapterRef.current === targetChapter && generationRef.current === generation;
+
+    async function fetchAuthorized<T>(path: string, permitted: boolean): Promise<T[]> {
+      if (!permitted) {
+        return [];
+      }
       try {
-        const res = await apiGet<T[]>(path);
-        const rows = Array.isArray(res.data) ? res.data : [];
-        if (rows.length === 0 && previewEnabled) {
-          return fallback;
+        return await fetchAllAuthorizedPages<T>(path, { shouldContinue: guard });
+      } catch (err) {
+        // Optional enrichment resources for a partial-duty officer (e.g. rf.read vs po.read)
+        if (err instanceof ContractApiError && err.status === 403) {
+          return [];
         }
-        return rows;
-      } catch {
-        return previewEnabled ? fallback : [];
+        throw err;
       }
     }
 
-    const [itemRows, variantRows, unitRows, locRows, rfRows, lotRows] = await Promise.all([
-      safeList<CandidateCatalogueItem>(
-        `/api/v1/chapters/${chapterId}/catalogue/items?state=all&limit=100`,
-        PREVIEW_CANDIDATE_DEFAULTS.items,
-      ),
-      safeList<CandidateCatalogueVariant>(
-        `/api/v1/chapters/${chapterId}/catalogue/variants?state=all&limit=100`,
-        PREVIEW_CANDIDATE_DEFAULTS.variants,
-      ),
-      safeList<CandidateCatalogueUnit>(
-        `/api/v1/chapters/${chapterId}/catalogue/units?state=all&limit=100`,
-        PREVIEW_CANDIDATE_DEFAULTS.units,
-      ),
-      safeList<CandidateLocation>(
-        `/api/v1/chapters/${chapterId}/catalogue/locations?state=all&limit=100`,
-        PREVIEW_CANDIDATE_DEFAULTS.locations,
-      ),
-      safeList<CandidateInternalRf>(
-        `/api/v1/chapters/${chapterId}/internal-rfs?limit=50`,
-        PREVIEW_CANDIDATE_DEFAULTS.rfs,
-      ),
-      safeList<CandidateStockLot>(
-        `/api/v1/chapters/${chapterId}/stock/lots?limit=50`,
-        [],
-      ),
-    ]);
+    try {
+      const [itemRows, variantRows, unitRows, locRows, rfRows, lotRows] = await Promise.all([
+        fetchAuthorized<CandidateCatalogueItem>(
+          `/api/v1/chapters/${targetChapter}/catalogue/items?state=all`,
+          canReadCatalogue,
+        ),
+        fetchAuthorized<CandidateCatalogueVariant>(
+          `/api/v1/chapters/${targetChapter}/catalogue/variants?state=all`,
+          canReadCatalogue,
+        ),
+        fetchAuthorized<CandidateCatalogueUnit>(
+          `/api/v1/chapters/${targetChapter}/catalogue/units?state=all`,
+          canReadCatalogue,
+        ),
+        fetchAuthorized<CandidateLocation>(
+          `/api/v1/chapters/${targetChapter}/catalogue/locations?state=all`,
+          canReadCatalogue,
+        ),
+        fetchAuthorized<CandidateInternalRf>(
+          `/api/v1/chapters/${targetChapter}/internal-rfs`,
+          canReadRf,
+        ),
+        fetchAuthorized<CandidateStockLot>(
+          `/api/v1/chapters/${targetChapter}/stock/lots`,
+          canReadStock,
+        ),
+      ]);
 
-    if (generationRef.current !== generation) {
-      return;
+      if (!guard()) {
+        return;
+      }
+      setItems(itemRows);
+      setVariants(variantRows);
+      setUnits(unitRows);
+      setLocations(locRows);
+      setRfs(rfRows);
+      setLots(lotRows);
+    } catch (err) {
+      if (guard()) {
+        setError(err);
+      }
+    } finally {
+      if (guard()) {
+        setLoading(false);
+      }
     }
-    setItems(itemRows);
-    setVariants(variantRows);
-    setUnits(unitRows);
-    setLocations(locRows);
-    setRfs(rfRows);
-    setLots(lotRows);
-    setLoading(false);
-  }, [chapterId, previewEnabled]);
+  }, [chapterId, canReadCatalogue, canReadRf, canReadStock]);
 
   useEffect(() => {
     void loadCandidates();
@@ -373,22 +320,13 @@ export function useStage2Candidates(
         ids.add(rf.requesting_unit_id);
       }
     }
-    if (previewEnabled) {
-      ids.add('62000000-0000-4000-8000-000000000001');
-      ids.add('62000000-0000-4000-8000-000000000002');
-    }
     return Array.from(ids).map((id) => ({
       id,
-      primaryLabel:
-        id === '62000000-0000-4000-8000-000000000001'
-          ? 'Community Response Team A'
-          : id === '62000000-0000-4000-8000-000000000002'
-            ? 'Campus Outreach Committee'
-            : `Requesting Unit (${id.slice(0, 8)}…)`,
+      primaryLabel: `Requesting Unit (${id.slice(0, 8)}…)`,
       secondaryLabel: `Derived from chapter RFs · ${id}`,
       meta: id,
     }));
-  }, [previewEnabled, rfs]);
+  }, [rfs]);
 
   const eventOptions = useMemo<Array<SearchablePickerOption<string>>>(() => {
     const ids = new Set<string>();
@@ -397,19 +335,13 @@ export function useStage2Candidates(
         ids.add(rf.event_id);
       }
     }
-    if (previewEnabled) {
-      ids.add('63000000-0000-4000-8000-000000000001');
-    }
     return Array.from(ids).map((id) => ({
       id,
-      primaryLabel:
-        id === '63000000-0000-4000-8000-000000000001'
-          ? 'Barangay Relief Caravan'
-          : `Chapter Event (${id.slice(0, 8)}…)`,
+      primaryLabel: `Chapter Event (${id.slice(0, 8)}…)`,
       secondaryLabel: `Derived from chapter RFs · ${id}`,
       meta: id,
     }));
-  }, [previewEnabled, rfs]);
+  }, [rfs]);
 
   const representativeOptions = useMemo<Array<SearchablePickerOption<string>>>(() => {
     const list: Array<SearchablePickerOption<string>> = [];
@@ -422,16 +354,8 @@ export function useStage2Candidates(
         meta: chapterAccess.user_id,
       });
     }
-    if (previewEnabled) {
-      list.push({
-        id: '10000000-0000-4000-8000-000000000008',
-        primaryLabel: 'Marco Technical (Technical Representative)',
-        secondaryLabel: '10000000-0000-4000-8000-000000000008',
-        meta: '10000000-0000-4000-8000-000000000008',
-      });
-    }
     return list;
-  }, [chapterAccess, previewEnabled]);
+  }, [chapterAccess]);
 
   const describeVariant = useCallback(
     (variantId: string) => {
@@ -463,6 +387,7 @@ export function useStage2Candidates(
 
   return {
     loading,
+    error,
     items,
     variants,
     units,

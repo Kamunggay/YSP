@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { actionBlockReason } from '../api/access.ts';
-import { ContractApiError, formatManilaTime } from '../api/client.ts';
+import { ContractApiError, formatManilaTime, newActionKey } from '../api/client.ts';
 import {
   acknowledgeDonation,
   cancelDonation,
@@ -8,9 +8,11 @@ import {
   createDonation,
   declineDonation,
   findDonationOperation,
+  listAllStage2Pages,
   listDonationHistory,
   listDonationRelated,
   listDonations,
+  nowUtcInstant,
   printDonation,
   readDonation,
   readDonationOperation,
@@ -19,6 +21,7 @@ import {
   resolveDonationRestriction,
   returnDonation,
   reviseDonation,
+  settleStage2Tuple,
   submitDonation,
 } from '../api/stage2Client.ts';
 import type {
@@ -47,7 +50,6 @@ interface DonationRestrictionWorkspaceProps {
   refreshSignal: number;
   domainSignal?: number;
   chapterAccess: ChapterAccessSnapshot | null;
-  previewEnabled: boolean;
   initialDaId?: string | null;
   onNavigateTab: (tab: WorkspaceTab) => void;
   onBackToDashboard?: () => void;
@@ -84,6 +86,28 @@ function emptyRestriction(): BoundedRestriction {
   };
 }
 
+function normalizeDonationRestriction(
+  r: BoundedRestriction,
+  requireInterpretationUuid = false,
+): BoundedRestriction {
+  if (r.state === 'unrestricted') {
+    return emptyRestriction();
+  }
+  return {
+    state: r.state,
+    allowed_uses: r.state === 'bounded' ? Array.from(new Set(r.allowed_uses)) : [],
+    event_ids: r.state === 'bounded' ? Array.from(new Set(r.event_ids)) : [],
+    requesting_unit_ids: r.state === 'bounded' ? Array.from(new Set(r.requesting_unit_ids)) : [],
+    effective_from: r.effective_from ?? null,
+    effective_until: r.effective_until ?? null,
+    interpretation_id:
+      r.state === 'bounded' && requireInterpretationUuid
+        ? (r.interpretation_id ?? newActionKey())
+        : (r.interpretation_id ?? null),
+    source_condition_reference: r.source_condition_reference?.trim() || null,
+  };
+}
+
 function emptyDaLine(seed?: Partial<EditableDonationLine>): EditableDonationLine {
   return {
     key: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -105,14 +129,20 @@ export function DonationRestrictionWorkspace({
   refreshSignal,
   domainSignal = 0,
   chapterAccess,
-  previewEnabled,
   initialDaId = null,
   onNavigateTab,
   onBackToDashboard,
 }: DonationRestrictionWorkspaceProps) {
   const formKey = 'stage2_da_editor';
-  const candidates = useStage2Candidates(chapterId, refreshSignal, previewEnabled, chapterAccess);
+  const candidates = useStage2Candidates(chapterId, refreshSignal, chapterAccess);
   const skipSaveRef = useRef(false);
+  const listGenRef = useRef(0);
+  const detailGenRef = useRef(0);
+  const activeChapterRef = useRef(chapterId);
+  useEffect(() => {
+    activeChapterRef.current = chapterId;
+  }, [chapterId]);
+  const initializedResolutionForDaRef = useRef<string>('');
 
   const savedDraft = useMemo<{
     editingDaId?: string | null;
@@ -170,76 +200,138 @@ export function DonationRestrictionWorkspace({
     operationId?: string;
   } | null>(null);
 
-  const canPrepare = !actionBlockReason(chapterAccess, 'donation.prepare');
-  const canSubmit = !actionBlockReason(chapterAccess, 'donation.submit');
-  const canAck = !actionBlockReason(chapterAccess, 'donation.acknowledge');
-  const canReturn = !actionBlockReason(chapterAccess, 'donation.return');
-  const canDecline = !actionBlockReason(chapterAccess, 'donation.decline');
-  const canRevise = !actionBlockReason(chapterAccess, 'donation.revise');
-  const canCloseShort = !actionBlockReason(chapterAccess, 'donation.close_short');
-  const canCancel = !actionBlockReason(chapterAccess, 'donation.cancel');
+  const canReadDa = !actionBlockReason(chapterAccess, 'da.read');
+  const canReadDaHistory = !actionBlockReason(chapterAccess, 'da.history_read', 'history.read');
+  const canDraft = !actionBlockReason(chapterAccess, 'da.draft');
+  const canSubmit = !actionBlockReason(chapterAccess, 'da.submit');
+  const canAck = !actionBlockReason(chapterAccess, 'da.acknowledge');
+  const canCancel = !actionBlockReason(chapterAccess, 'da.cancel');
   const canResolveRestriction = !actionBlockReason(
     chapterAccess,
-    'donation.resolve_restriction',
+    'da.restriction_resolve',
   );
 
+  const handleSelectDaChange = useCallback((nextDaId: string) => {
+    setSelectedDaId((cur) => {
+      if (cur === nextDaId) {
+        return cur;
+      }
+      detailGenRef.current += 1;
+      initializedResolutionForDaRef.current = '';
+      setAckEvidence(null);
+      setAckConfirmed(false);
+      setReasonInput('');
+      setResLineId('');
+      setResKind('apply');
+      setResTargetRestriction(emptyRestriction());
+      setResReason('');
+      setResEvidence(null);
+      setResConfirmed(false);
+      return nextDaId;
+    });
+  }, []);
+
   const loadList = useCallback(async () => {
+    if (!canReadDa) {
+      setDonations([]);
+      return;
+    }
+    const targetChapter = chapterId;
+    const gen = ++listGenRef.current;
+    const guard = () =>
+      activeChapterRef.current === targetChapter && listGenRef.current === gen;
     try {
-      const res = await listDonations(chapterId, {
-        status: (statusFilter || undefined) as DonationStatus | undefined,
-        limit: 50,
-      });
-      setDonations(res.data);
+      const rows = await listAllStage2Pages(
+        (q) =>
+          listDonations(targetChapter, {
+            ...q,
+            status: (statusFilter || undefined) as DonationStatus | undefined,
+          }),
+        { shouldContinue: guard },
+      );
+      if (!guard()) return;
+      setDonations(rows);
       setSelectedDaId((cur) => {
-        if (initialDaId && res.data.some((d) => d.da_id === initialDaId)) {
-          return initialDaId;
+        const nextId =
+          initialDaId && rows.some((d) => d.da_id === initialDaId)
+            ? initialDaId
+            : cur && rows.some((d) => d.da_id === cur)
+              ? cur
+              : (rows[0]?.da_id ?? '');
+        if (nextId !== cur) {
+          initializedResolutionForDaRef.current = '';
+          setAckEvidence(null);
+          setAckConfirmed(false);
+          setResEvidence(null);
+          setResConfirmed(false);
         }
-        if (cur && res.data.some((d) => d.da_id === cur)) {
-          return cur;
-        }
-        return res.data[0]?.da_id ?? '';
+        return nextId;
       });
     } catch (err) {
-      setError(err);
+      if (guard()) {
+        setError(err);
+      }
     }
-  }, [chapterId, initialDaId, statusFilter]);
+  }, [canReadDa, chapterId, initialDaId, statusFilter]);
 
   const loadDetail = useCallback(
     async (daId: string) => {
-      if (!daId) {
+      if (!daId || !canReadDa) {
         setSelectedDa(null);
         setHistory([]);
         setRelated([]);
         return;
       }
-      try {
-        const [detail, histRes, relRes] = await Promise.all([
-          readDonation(chapterId, daId),
-          listDonationHistory(chapterId, daId, { limit: 50 }),
-          listDonationRelated(chapterId, daId, { limit: 50 }),
-        ]);
+      const targetChapter = chapterId;
+      const gen = ++detailGenRef.current;
+      const guard = () =>
+        activeChapterRef.current === targetChapter && detailGenRef.current === gen;
+      const {
+        values: [detail, histRows, relRows],
+        firstError,
+      } = await settleStage2Tuple([
+        readDonation(targetChapter, daId),
+        canReadDaHistory
+          ? listAllStage2Pages((q) => listDonationHistory(targetChapter, daId, q), {
+              shouldContinue: guard,
+            })
+          : Promise.resolve([] as DonationHistoryEntry[]),
+        listAllStage2Pages((q) => listDonationRelated(targetChapter, daId, q), {
+          shouldContinue: guard,
+        }),
+      ]);
+      if (!guard()) return;
+      if (histRows !== undefined) {
+        setHistory(histRows);
+      }
+      if (relRows !== undefined) {
+        setRelated(relRows);
+      }
+      if (detail !== undefined) {
         setSelectedDa(detail);
-        setHistory(histRes.data);
-        setRelated(relRes.data);
-        const uninterpreted = detail.lines.find(
-          (l) => l.restrictions.state === 'uninterpreted',
-        );
-        const targetLine = uninterpreted ?? detail.lines[0];
-        if (targetLine) {
-          setResLineId(targetLine.line_id);
-          setResTargetRestriction({
-            ...targetLine.restrictions,
-            state:
-              targetLine.restrictions.state === 'uninterpreted'
-                ? 'bounded'
-                : targetLine.restrictions.state,
-          });
+        if (initializedResolutionForDaRef.current !== detail.da_id) {
+          initializedResolutionForDaRef.current = detail.da_id;
+          const uninterpreted = detail.lines.find(
+            (l) => l.restrictions.state === 'uninterpreted',
+          );
+          const targetLine = uninterpreted ?? detail.lines[0];
+          if (targetLine) {
+            setResLineId(targetLine.line_id);
+            setResTargetRestriction({
+              ...targetLine.restrictions,
+              state:
+                targetLine.restrictions.state === 'uninterpreted'
+                  ? 'bounded'
+                  : targetLine.restrictions.state,
+            });
+          }
         }
-      } catch (err) {
-        setError(err);
+      }
+      if (firstError !== null) {
+        setError(firstError);
       }
     },
-    [chapterId],
+    [canReadDa, canReadDaHistory, chapterId],
   );
 
   useEffect(() => {
@@ -338,7 +430,7 @@ export function DonationRestrictionWorkspace({
         valuation_kind: l.valuation_kind,
         unit_value_php: l.unit_value_php.trim(),
         valuation_basis: l.valuation_basis.trim(),
-        restrictions: l.restrictions,
+        restrictions: normalizeDonationRestriction(l.restrictions, false),
       }));
       if (editingDaId && selectedDa && selectedDa.da_id === editingDaId) {
         const { data, actionKey } = await replaceDonation(chapterId, editingDaId, {
@@ -458,7 +550,7 @@ export function DonationRestrictionWorkspace({
             label="Select Donation Acknowledgment"
             valueId={selectedDaId}
             options={daOptions}
-            onSelect={(opt) => setSelectedDaId(opt?.id ?? '')}
+            onSelect={(opt) => handleSelectDaChange(opt?.id ?? '')}
             placeholder="Search DA reference or donor..."
           />
           <div className="form-group">
@@ -595,7 +687,7 @@ export function DonationRestrictionWorkspace({
                   <button
                     type="button"
                     className="btn-batcave-secondary p02-compact-btn"
-                    disabled={!canPrepare || busy}
+                    disabled={!canDraft || busy}
                     onClick={() => {
                       setEditingDaId(selectedDa.da_id);
                       setDonorName(selectedDa.donor_name);
@@ -640,7 +732,7 @@ export function DonationRestrictionWorkspace({
                     <button
                       type="button"
                       className="btn-batcave-primary p02-compact-btn"
-                      disabled={!canRevise || busy}
+                      disabled={!canDraft || busy}
                       onClick={() =>
                         void runDaAction(
                           'reviseDonation',
@@ -663,7 +755,7 @@ export function DonationRestrictionWorkspace({
                   <button
                     type="button"
                     className="btn-batcave-secondary p02-compact-btn"
-                    disabled={!canReturn || busy || !reasonInput.trim()}
+                    disabled={!canAck || busy || !reasonInput.trim()}
                     onClick={() =>
                       void runDaAction(
                         'returnDonation',
@@ -682,7 +774,7 @@ export function DonationRestrictionWorkspace({
                   <button
                     type="button"
                     className="btn-batcave-secondary p02-compact-btn"
-                    disabled={!canDecline || busy || !reasonInput.trim()}
+                    disabled={!canAck || busy || !reasonInput.trim()}
                     onClick={() =>
                       void runDaAction(
                         'declineDonation',
@@ -705,7 +797,7 @@ export function DonationRestrictionWorkspace({
                 <button
                   type="button"
                   className="btn-batcave-secondary p02-compact-btn"
-                  disabled={!canCloseShort || busy || !reasonInput.trim()}
+                  disabled={!canAck || busy || !reasonInput.trim()}
                   onClick={() =>
                     void runDaAction(
                       'closeShortDonation',
@@ -722,9 +814,10 @@ export function DonationRestrictionWorkspace({
                   Close Short
                 </button>
               )}
-              {selectedDa.status !== 'canceled' &&
-                selectedDa.status !== 'received' &&
-                selectedDa.status !== 'declined' && (
+              {(selectedDa.status === 'draft' ||
+                selectedDa.status === 'pending_acknowledgment' ||
+                selectedDa.status === 'returned_for_revision' ||
+                selectedDa.status === 'acknowledged') && (
                   <button
                     type="button"
                     className="btn-batcave-secondary p02-compact-btn"
@@ -789,7 +882,7 @@ export function DonationRestrictionWorkspace({
                             expected_version: selectedDa.version,
                             expected_material_version: selectedDa.material_version,
                             evidence: ackEvidence!,
-                            signed_at: new Date().toISOString(),
+                            signed_at: nowUtcInstant(),
                             confirm_paper_matches: true,
                           }),
                         'Signed and acknowledged Donation Acknowledgment.',
@@ -802,141 +895,224 @@ export function DonationRestrictionWorkspace({
               </div>
             )}
 
-            {/* ADR 0004 Restriction Resolution */}
-            <div className="s2-breakdown-box">
-              <h4>ADR 0004 Signed Donor Restriction Resolution</h4>
-              <div className="s2-grid-2">
-                <SearchableRecordPicker
-                  id="da-res-line-picker"
-                  label="Target DA Line"
-                  valueId={resLineId}
-                  options={selectedDaLineOptions}
-                  onSelect={(opt) => setResLineId(opt?.id ?? '')}
-                  placeholder="Select DA line..."
-                />
-                <div className="form-group">
-                  <label className="form-label">Resolution Action</label>
-                  <select
-                    className="form-control"
-                    value={resKind}
-                    onChange={(e) => {
-                      const next = e.target.value as 'apply' | 'audit_review';
-                      setResKind(next);
-                      if (next === 'audit_review') {
-                        setResTargetRestriction((prev) => ({
-                          ...prev,
-                          state: 'uninterpreted',
-                        }));
-                      } else if (resTargetRestriction.state === 'uninterpreted') {
-                        setResTargetRestriction((prev) => ({ ...prev, state: 'bounded' }));
-                      }
-                    }}
-                  >
-                    <option value="apply">Apply Interpreted Rules (Unblock Eligible Lots)</option>
-                    <option value="audit_review">
-                      Audit Review Only (Keep Uninterpreted &amp; Blocked)
-                    </option>
-                  </select>
-                </div>
-              </div>
-
-              {resKind === 'apply' && (
+            {/* ADR 0004 Restriction Resolution (acknowledged post-ack states only) */}
+            {(selectedDa.status === 'acknowledged' ||
+              selectedDa.status === 'partially_received' ||
+              selectedDa.status === 'received' ||
+              selectedDa.status === 'closed_short') && (
+              <div className="s2-breakdown-box">
+                <h4>ADR 0004 Signed Donor Restriction Resolution</h4>
                 <div className="s2-grid-2">
+                  <SearchableRecordPicker
+                    id="da-res-line-picker"
+                    label="Target DA Line"
+                    valueId={resLineId}
+                    options={selectedDaLineOptions}
+                    onSelect={(opt) => setResLineId(opt?.id ?? '')}
+                    placeholder="Select DA line..."
+                  />
                   <div className="form-group">
-                    <label className="form-label">Resolved State</label>
+                    <label className="form-label">Resolution Action</label>
                     <select
                       className="form-control"
-                      value={resTargetRestriction.state}
-                      onChange={(e) =>
-                        setResTargetRestriction((prev) => ({
-                          ...prev,
-                          state: e.target.value as BoundedRestriction['state'],
-                        }))
-                      }
+                      value={resKind}
+                      onChange={(e) => {
+                        const next = e.target.value as 'apply' | 'audit_review';
+                        setResKind(next);
+                        if (next === 'audit_review') {
+                          setResTargetRestriction((prev) => ({
+                            ...prev,
+                            state: 'uninterpreted',
+                          }));
+                        } else if (resTargetRestriction.state === 'uninterpreted') {
+                          setResTargetRestriction((prev) => ({
+                            ...prev,
+                            state: 'bounded',
+                            interpretation_id: prev.interpretation_id ?? newActionKey(),
+                          }));
+                        }
+                      }}
                     >
-                      <option value="unrestricted">Unrestricted (General Pool)</option>
-                      <option value="bounded">Bounded (Scoped by Event / Unit / Use)</option>
+                      <option value="apply">Apply Interpreted Rules (Unblock Eligible Lots)</option>
+                      <option value="audit_review">
+                        Audit Review Only (Keep Uninterpreted &amp; Blocked)
+                      </option>
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Source Condition Reference</label>
-                    <input
-                      className="form-control"
-                      value={resTargetRestriction.source_condition_reference ?? ''}
-                      onChange={(e) =>
-                        setResTargetRestriction((prev) => ({
-                          ...prev,
-                          source_condition_reference: e.target.value || null,
-                        }))
-                      }
-                    />
-                  </div>
                 </div>
-              )}
 
-              <div className="form-group">
-                <label className="form-label">Signed Resolution Justification</label>
-                <input
-                  className="form-control"
-                  value={resReason}
-                  onChange={(e) => setResReason(e.target.value)}
-                  placeholder="Document chapter legal/coordinator sign-off..."
+                {resKind === 'apply' && (
+                  <>
+                    <div className="s2-grid-2">
+                      <div className="form-group">
+                        <label className="form-label">Resolved State</label>
+                        <select
+                          className="form-control"
+                          value={resTargetRestriction.state}
+                          onChange={(e) => {
+                            const nextState = e.target.value as BoundedRestriction['state'];
+                            setResTargetRestriction((prev) =>
+                              nextState === 'unrestricted'
+                                ? emptyRestriction()
+                                : {
+                                    ...prev,
+                                    state: nextState,
+                                    interpretation_id: prev.interpretation_id ?? newActionKey(),
+                                  },
+                            );
+                          }}
+                        >
+                          <option value="unrestricted">Unrestricted (General Pool)</option>
+                          <option value="bounded">Bounded (Scoped by Event / Unit / Use)</option>
+                        </select>
+                      </div>
+                      {resTargetRestriction.state === 'bounded' && (
+                        <div className="form-group">
+                          <label className="form-label">Source Condition Reference</label>
+                          <input
+                            className="form-control"
+                            value={resTargetRestriction.source_condition_reference ?? ''}
+                            onChange={(e) =>
+                              setResTargetRestriction((prev) => ({
+                                ...prev,
+                                source_condition_reference: e.target.value || null,
+                              }))
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {resTargetRestriction.state === 'bounded' && (
+                      <div className="s2-override-box">
+                        <div className="s2-kpi-strip">
+                          {ALLOWED_USE_CHOICES.map((choice) => {
+                            const active = resTargetRestriction.allowed_uses.includes(choice.value);
+                            return (
+                              <label key={choice.value} className="s2-check-row">
+                                <input
+                                  type="checkbox"
+                                  checked={active}
+                                  onChange={(e) =>
+                                    setResTargetRestriction((prev) => ({
+                                      ...prev,
+                                      allowed_uses: e.target.checked
+                                        ? [...prev.allowed_uses, choice.value]
+                                        : prev.allowed_uses.filter((u) => u !== choice.value),
+                                    }))
+                                  }
+                                />
+                                {choice.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <div className="s2-grid-2">
+                          <SearchableRecordPicker
+                            id="da-res-ev-picker"
+                            label="Scoped Event (optional)"
+                            valueId={resTargetRestriction.event_ids[0] ?? ''}
+                            options={candidates.eventOptions}
+                            onSelect={(opt) =>
+                              setResTargetRestriction((prev) => ({
+                                ...prev,
+                                event_ids: opt?.id ? [opt.id] : [],
+                              }))
+                            }
+                          />
+                          <SearchableRecordPicker
+                            id="da-res-unit-picker"
+                            label="Scoped Requesting Unit (optional)"
+                            valueId={resTargetRestriction.requesting_unit_ids[0] ?? ''}
+                            options={candidates.requestingUnitOptions}
+                            onSelect={(opt) =>
+                              setResTargetRestriction((prev) => ({
+                                ...prev,
+                                requesting_unit_ids: opt?.id ? [opt.id] : [],
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="form-group">
+                  <label className="form-label">Signed Resolution Justification</label>
+                  <input
+                    className="form-control"
+                    value={resReason}
+                    onChange={(e) => setResReason(e.target.value)}
+                    placeholder="Document chapter legal/coordinator sign-off..."
+                  />
+                </div>
+
+                <Stage2EvidenceUploader
+                  chapterId={chapterId}
+                  purpose="donor_restriction_resolution"
+                  recordId={selectedDa.da_id}
+                  recordLabel={`${selectedDa.reference ?? selectedDa.donor_name} Resolution`}
+                  selectedBinding={resEvidence}
+                  onSelectBinding={setResEvidence}
                 />
+
+                <label className="s2-check-row">
+                  <input
+                    type="checkbox"
+                    checked={resConfirmed}
+                    onChange={(e) => setResConfirmed(e.target.checked)}
+                  />
+                  I confirm the signed restriction interpretation paper matches this resolution.
+                </label>
+
+                <div className="s2-action-bar">
+                  <button
+                    type="button"
+                    className="btn-batcave-primary p02-compact-btn"
+                    disabled={
+                      !canResolveRestriction ||
+                      busy ||
+                      !resLineId ||
+                      !resReason.trim() ||
+                      !resEvidence ||
+                      !resConfirmed
+                    }
+                    onClick={() =>
+                      void runDaAction(
+                        'resolveDonationRestriction',
+                        () =>
+                          resolveDonationRestriction(chapterId, selectedDa.da_id, {
+                            expected_version: selectedDa.version,
+                            expected_material_version: selectedDa.material_version,
+                            da_line_id: resLineId,
+                            resolution_kind: resKind,
+                            reason: resReason.trim(),
+                            restrictions:
+                              resKind === 'audit_review'
+                                ? {
+                                    ...emptyRestriction(),
+                                    state: 'uninterpreted',
+                                    source_condition_reference:
+                                      resTargetRestriction.source_condition_reference?.trim() ||
+                                      selectedDa.lines.find((l) => l.line_id === resLineId)
+                                        ?.restrictions.source_condition_reference ||
+                                      'Uninterpreted donor condition under review',
+                                  }
+                                : normalizeDonationRestriction(resTargetRestriction, true),
+                            evidence: resEvidence!,
+                            signed_at: nowUtcInstant(),
+                            confirm_paper_matches: true,
+                          }),
+                        'Recorded signed ADR 0004 restriction resolution.',
+                      )
+                    }
+                  >
+                    Commit Restriction Resolution
+                  </button>
+                </div>
               </div>
-
-              <Stage2EvidenceUploader
-                chapterId={chapterId}
-                purpose="donor_restriction_resolution"
-                recordId={selectedDa.da_id}
-                recordLabel={`${selectedDa.reference ?? selectedDa.donor_name} Resolution`}
-                selectedBinding={resEvidence}
-                onSelectBinding={setResEvidence}
-              />
-
-              <label className="s2-check-row">
-                <input
-                  type="checkbox"
-                  checked={resConfirmed}
-                  onChange={(e) => setResConfirmed(e.target.checked)}
-                />
-                I confirm the signed restriction interpretation paper matches this resolution.
-              </label>
-
-              <div className="s2-action-bar">
-                <button
-                  type="button"
-                  className="btn-batcave-primary p02-compact-btn"
-                  disabled={
-                    !canResolveRestriction ||
-                    busy ||
-                    !resLineId ||
-                    !resReason.trim() ||
-                    !resEvidence ||
-                    !resConfirmed
-                  }
-                  onClick={() =>
-                    void runDaAction(
-                      'resolveDonationRestriction',
-                      () =>
-                        resolveDonationRestriction(chapterId, selectedDa.da_id, {
-                          expected_version: selectedDa.version,
-                          expected_material_version: selectedDa.material_version,
-                          da_line_id: resLineId,
-                          resolution_kind: resKind,
-                          reason: resReason.trim(),
-                          restrictions: resTargetRestriction,
-                          evidence: resEvidence!,
-                          signed_at: new Date().toISOString(),
-                          confirm_paper_matches: true,
-                        }),
-                      'Recorded signed ADR 0004 restriction resolution.',
-                    )
-                  }
-                >
-                  Commit Restriction Resolution
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </section>
@@ -1254,7 +1430,7 @@ export function DonationRestrictionWorkspace({
             >
               + Add Donation Line
             </button>
-            <button type="submit" className="btn-batcave-primary" disabled={!canPrepare || busy}>
+            <button type="submit" className="btn-batcave-primary" disabled={!canDraft || busy}>
               {editingDaId ? 'Replace Draft DA' : 'Create Draft DA'}
             </button>
           </div>
@@ -1263,6 +1439,7 @@ export function DonationRestrictionWorkspace({
 
       {selectedDa && (
         <Stage2AuditPanels
+          recordId={selectedDa.da_id}
           title={selectedDa.reference ?? 'Draft Donation Acknowledgment'}
           recordVersion={selectedDa.version}
           history={history.map((h, i) => ({

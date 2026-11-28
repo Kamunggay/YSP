@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { actionBlockReason } from '../api/access.ts';
 import { apiGet, apiGetBlob, apiMutate, formatManilaTime, newActionKey } from '../api/client.ts';
 import {
-  isStage2PreviewActive,
+  listAllStage2Pages,
   listDonations,
   listPurchaseOrders,
   listReceivingDiscrepancies,
@@ -88,13 +88,13 @@ export function PaperEvidenceWorkspace({
   const candidates = useStage2Candidates(
     chapterId,
     refreshSignal,
-    isStage2PreviewActive(),
     chapterAccess,
   );
   const [files, setFiles] = useState<FileList | null>(null);
 
   useEffect(() => {
     let active = true;
+    const guard = () => active;
     void (async () => {
       const opts: Array<SearchablePickerOption<string>> = [];
       for (const rf of candidates.rfs) {
@@ -115,13 +115,29 @@ export function PaperEvidenceWorkspace({
           meta: lot.id,
         });
       }
+      const canRepf = !actionBlockReason(chapterAccess, 'repf.read');
+      const canPo = !actionBlockReason(chapterAccess, 'po.read');
+      const canDa = !actionBlockReason(chapterAccess, 'da.read');
+      const canRcv = !actionBlockReason(chapterAccess, 'receiving.read');
       const [repfs, pos, das, rms, discs, holds] = await Promise.all([
-        listRepfs(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
-        listPurchaseOrders(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
-        listDonations(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
-        listReceivingReports(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
-        listReceivingDiscrepancies(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
-        listReceivingHolds(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
+        canRepf
+          ? listAllStage2Pages((q) => listRepfs(chapterId, q), { shouldContinue: guard }).catch(() => [])
+          : Promise.resolve([]),
+        canPo
+          ? listAllStage2Pages((q) => listPurchaseOrders(chapterId, q), { shouldContinue: guard }).catch(() => [])
+          : Promise.resolve([]),
+        canDa
+          ? listAllStage2Pages((q) => listDonations(chapterId, q), { shouldContinue: guard }).catch(() => [])
+          : Promise.resolve([]),
+        canRcv
+          ? listAllStage2Pages((q) => listReceivingReports(chapterId, q), { shouldContinue: guard }).catch(() => [])
+          : Promise.resolve([]),
+        canRcv
+          ? listAllStage2Pages((q) => listReceivingDiscrepancies(chapterId, q), { shouldContinue: guard }).catch(() => [])
+          : Promise.resolve([]),
+        canRcv
+          ? listAllStage2Pages((q) => listReceivingHolds(chapterId, q), { shouldContinue: guard }).catch(() => [])
+          : Promise.resolve([]),
       ]);
       if (!active) return;
       for (const r of repfs) {
@@ -183,7 +199,7 @@ export function PaperEvidenceWorkspace({
     return () => {
       active = false;
     };
-  }, [candidates.lots, candidates.rfs, chapterId, refreshSignal]);
+  }, [candidates.lots, candidates.rfs, chapterAccess, chapterId, refreshSignal]);
 
   const filteredRecordOptions = useMemo(() => {
     const badgeByPurpose: Record<string, string[]> = {
@@ -200,8 +216,7 @@ export function PaperEvidenceWorkspace({
     };
     const preferred = badgeByPurpose[purpose] ?? [];
     if (preferred.length === 0) return stage2RecordOptions;
-    const matches = stage2RecordOptions.filter((o) => o.badge && preferred.includes(o.badge));
-    return matches.length > 0 ? matches : stage2RecordOptions;
+    return stage2RecordOptions.filter((o) => o.badge && preferred.includes(o.badge));
   }, [purpose, stage2RecordOptions]);
 
   const [evidenceIdInput, setEvidenceIdInput] = useState(initialDraft.evidenceIdInput ?? '');

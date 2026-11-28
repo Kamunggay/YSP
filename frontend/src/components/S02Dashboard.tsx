@@ -144,19 +144,25 @@ const WORKSPACE_GROUPS: NavGroupConfig[] = [
         tab: 'receiving_discrepancies',
         label: 'Receiving & Holds',
         subtitle: 'PO/DA receipts, discrepancies & holds',
-        requiredActions: ['receiving_report.read', 'receiving_hold.read'],
+        requiredActions: ['receiving.read'],
       },
       {
         tab: 'donations_restrictions',
         label: 'Donations & Restrictions',
         subtitle: 'In-kind DAs & ADR 0004 resolution',
-        requiredActions: ['donation.read'],
+        requiredActions: ['da.read'],
       },
       {
         tab: 'stage2_alerts_reports',
         label: 'Alerts, Queue & Reports',
         subtitle: 'Officer alerts, INV-09 queue & printouts',
-        requiredActions: ['alerts.read', 'allocation_queue.read', 'reports.read'],
+        requiredActions: [
+          'alerts.read',
+          'allocation_queue.read',
+          'reports.inventory.read',
+          'reports.procurement.read',
+          'reports.control.read',
+        ],
       },
     ],
   },
@@ -397,6 +403,21 @@ function actionToWorkspaceTab(action: string): WorkspaceTab {
   if (action.startsWith('issue.')) {
     return 'actual_issues';
   }
+  if (action.startsWith('replenishment.') || action.startsWith('repf.')) {
+    return 'replenishment_repf';
+  }
+  if (action.startsWith('quotation.') || action.startsWith('po.')) {
+    return 'quotations_po';
+  }
+  if (action.startsWith('receiving.') || action.startsWith('discrepancy.')) {
+    return 'receiving_discrepancies';
+  }
+  if (action.startsWith('da.')) {
+    return 'donations_restrictions';
+  }
+  if (action.startsWith('allocation_queue.') || action.startsWith('alerts.') || action.startsWith('reports.')) {
+    return 'stage2_alerts_reports';
+  }
   return 'stock';
 }
 
@@ -600,6 +621,9 @@ interface PriorityItem {
                           )}
                           {group.id === 'custody' && (
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" strokeLinecap="round" strokeLinejoin="round" />
+                          )}
+                          {group.id === 'stage2_procurement' && (
+                            <path d="M3 7h18v12H3zM7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2M8 13h8" strokeLinecap="round" strokeLinejoin="round" />
                           )}
                         </svg>
                       </span>
