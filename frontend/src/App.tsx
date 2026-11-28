@@ -435,6 +435,7 @@ export function App() {
                   userId={session.user.id}
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
+                  chapterContext={chapterContext}
                   chapterAccess={chapterAccess}
                   onBackToDashboard={handleBackToDashboard}
                 />
@@ -445,6 +446,7 @@ export function App() {
                   userId={session.user.id}
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
+                  chapterContext={chapterContext}
                   chapterAccess={chapterAccess}
                   onBackToDashboard={handleBackToDashboard}
                 />

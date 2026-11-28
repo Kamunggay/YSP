@@ -1254,6 +1254,23 @@ class ReservationService
             ]);
         }
 
+        $eligibilityCheck = app(StockEligibilityEvaluator::class)->verifyIntervalForRf(
+            $lot,
+            (string) $target['offset_quantity'],
+            (string) $target['quantity'],
+            $rf
+        );
+        if (! $eligibilityCheck['eligible']) {
+            throw new ContractException(409, 'stock_ineligible', $eligibilityCheck['reason'] ?? 'Target stock interval is not eligible for this internal RF.', [
+                'failed_intent_committed' => false,
+                'current' => [
+                    'rf' => $this->rfService->formatRf($rf),
+                    'preparation' => null,
+                    'reservation' => $ignoreReservation ? $this->formatReservation($ignoreReservation) : null,
+                ],
+            ]);
+        }
+
         if (isset($target['expected_lot_material_version']) && (int) $target['expected_lot_material_version'] !== (int) $lot->material_version) {
             throw new ContractException(409, 'material_version_conflict', 'Lot material_version mismatch.', [
                 'failed_intent_committed' => false,

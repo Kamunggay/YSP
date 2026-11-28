@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { actionBlockReason, unwrapMutationData } from '../api/access.ts';
-import { apiGet, apiGetText, apiMutate, buildQuery, newActionKey } from '../api/client.ts';
-import type { ChapterAccessSnapshot } from '../api/types.ts';
+import { apiGet, apiGetText, apiMutate, buildQuery, ContractApiError, formatManilaTime, newActionKey } from '../api/client.ts';
+import type { ChapterAccessSnapshot, ChapterContext } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
+import { SearchableRecordPicker, type SearchablePickerOption } from '../components/SearchableRecordPicker.tsx';
 import {
   emptyEvidenceBinding,
   emptyStockRange,
@@ -10,7 +11,7 @@ import {
   toWireRanges,
   type StockRangeInput,
 } from '../components/structuredInputHelpers.ts';
-import { EvidenceBindingFields, StockRangeRows } from '../components/StructuredInputRows.tsx';
+import { EvidenceBindingFields } from '../components/StructuredInputRows.tsx';
 import { memoryDraftStore } from '../state/memoryDraftStore.ts';
 
 interface IssueLineSelectionInput {
@@ -27,12 +28,111 @@ interface SourcePinInput {
   expected_stock_version: string;
 }
 
+interface InternalRfOption {
+  id: string;
+  reference: string | null;
+  status: string;
+  fulfillment_status: string;
+  requesting_unit_id: string | null;
+  requester_id?: string | null;
+  requester_user_id?: string | null;
+  needed_at: string | null;
+  justification?: string | null;
+  version?: number;
+  material_version?: number;
+  progress_version?: number;
+}
+
+interface AllocationQueueHint {
+  rf_id: string;
+  rf_line_id: string;
+  rf_reference: string;
+  queue_position: number;
+  allocation_tier: string;
+  variant_label: string;
+  unit_code: string;
+  unreserved_outstanding_quantity: string;
+}
+
+interface ReservationAllocItem {
+  stock_lot_id: string;
+  basis_segment_id: string;
+  offset_quantity: string;
+  quantity: string;
+}
+
+interface ReservationOptionRecord {
+  id: string;
+  rf_line_id: string;
+  status: string;
+  version: number;
+  material_version: number;
+  active_quantity: string;
+  allocations?: ReservationAllocItem[];
+}
+
+interface ChapterLotSummary {
+  id: string;
+  basis_segment_id: string;
+  historical_variant_label?: string;
+  quantity_on_hand: string;
+  stock_version: number;
+  material_version: number;
+  source?: {
+    type?: string;
+    reference?: string;
+  };
+}
+
+interface AllocationReviewData {
+  rf?: {
+    id: string;
+    reference?: string | null;
+    requester_id?: string | null;
+    requester_user_id?: string | null;
+    approval?: {
+      approved_by?: {
+        user_id?: string | null;
+      } | null;
+    } | null;
+    version: number;
+    material_version: number;
+    progress_version: number;
+  };
+  lines?: Array<{
+    rf_line_id: string;
+    variant_id: string;
+    unit_id: string;
+    candidate_lots?: Array<{
+      stock_lot_id: string;
+      source_reference?: string;
+      basis_segment_id: string;
+      free_quantity?: string;
+      quantity_on_hand: string;
+      stock_version: number;
+      material_version: number;
+    }>;
+  }>;
+}
+
+interface ActualIssueRecord {
+  id: string;
+  issue_reference?: string | null;
+  status: string;
+  version: number;
+  material_version: number;
+  recipient_id?: string;
+  snapshot?: { sha256?: string; material_version?: number };
+  acknowledgment?: { acknowledgment_id?: string; id?: string } | null;
+}
+
 type IssueOpKind = 'prepare' | 'revise' | 'ack' | 'post' | 'reconcile';
 
 interface ActualIssueWorkspaceProps {
   userId: string;
   chapterId: string;
   refreshSignal: number;
+  chapterContext: ChapterContext | null;
   chapterAccess: ChapterAccessSnapshot | null;
   onBackToDashboard?: () => void;
 }
@@ -63,23 +163,14 @@ export function ActualIssueWorkspace({
   userId,
   chapterId,
   refreshSignal,
+  chapterContext,
   chapterAccess,
   onBackToDashboard,
 }: ActualIssueWorkspaceProps) {
   const [viewTab, setViewTab] = useState<'workflow' | 'inspect' | 'status'>('workflow');
   const formKey = 'actual_issue_editor';
 
-  function readSavedDraft(): {
-    rfId?: string;
-    issueId?: string;
-    opKind?: IssueOpKind;
-    recipientId?: string;
-    reviseReason?: string;
-    reconcileReason?: string;
-    finding?: 'no_handover' | 'handed_over_unposted' | 'committed' | 'disputed';
-    acknowledgmentId?: string;
-    snapshotSha?: string;
-  } {
+  const readSavedDraft = useCallback(() => {
     const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
     if (!saved) {
       return {};
@@ -99,12 +190,22 @@ export function ActualIssueWorkspace({
     } catch {
       return {};
     }
-  }
+  }, [userId, chapterId]);
 
   const initialDraft = readSavedDraft();
   const [rfId, setRfId] = useState(initialDraft.rfId ?? '');
   const [issueId, setIssueId] = useState(initialDraft.issueId ?? '');
   const [opKind, setOpKind] = useState<IssueOpKind>(initialDraft.opKind ?? 'prepare');
+
+  const [rfList, setRfList] = useState<InternalRfOption[]>([]);
+  const [queueHints, setQueueHints] = useState<AllocationQueueHint[]>([]);
+  const [rfLoading, setRfLoading] = useState(false);
+  const [rfLoadError, setRfLoadError] = useState<string | null>(null);
+
+  const [reviewData, setReviewData] = useState<AllocationReviewData | null>(null);
+  const [chapterLots, setChapterLots] = useState<ChapterLotSummary[]>([]);
+  const [reservations, setReservations] = useState<ReservationOptionRecord[]>([]);
+  const [issuesList, setIssuesList] = useState<ActualIssueRecord[]>([]);
 
   const [expectedRfVersion, setExpectedRfVersion] = useState('1');
   const [expectedRfMatVersion, setExpectedRfMatVersion] = useState('1');
@@ -133,6 +234,8 @@ export function ActualIssueWorkspace({
   const [reconcileReason, setReconcileReason] = useState(initialDraft.reconcileReason ?? '');
   const [attachReconcileEvidence, setAttachReconcileEvidence] = useState(false);
   const [evidenceBinding, setEvidenceBinding] = useState(emptyEvidenceBinding);
+  const [handoverFiles, setHandoverFiles] = useState<FileList | null>(null);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
 
   const [issuesJson, setIssuesJson] = useState<unknown>(null);
   const [detailJson, setDetailJson] = useState<unknown>(null);
@@ -144,15 +247,424 @@ export function ActualIssueWorkspace({
   const [error, setError] = useState<unknown>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [replayed, setReplayed] = useState(false);
+  const rfSelectGenRef = useRef(0);
+  const skipNextAutoSaveRef = useRef(false);
+
+  const canReadQueue = (chapterContext?.membership?.duties ?? []).some((d) =>
+    ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD'].includes(d),
+  );
+
+  const loadChapterDiscovery = useCallback(async () => {
+    setRfLoading(true);
+    setRfLoadError(null);
+    try {
+      const [rfRes, lotsRes] = await Promise.all([
+        apiGet<InternalRfOption[]>(`/api/v1/chapters/${chapterId}/internal-rfs?status=approved&limit=50`),
+        apiGet<ChapterLotSummary[]>(`/api/v1/chapters/${chapterId}/stock/lots?limit=50`),
+      ]);
+      setRfList(rfRes.data);
+      setChapterLots(lotsRes.data);
+      if (canReadQueue) {
+        try {
+          const queueRes = await apiGet<AllocationQueueHint[]>(`/api/v1/chapters/${chapterId}/allocation-queue?limit=50`);
+          setQueueHints(queueRes.data);
+        } catch {
+          setQueueHints([]);
+        }
+      } else {
+        setQueueHints([]);
+      }
+    } catch (err) {
+      setRfLoadError(err instanceof Error ? err.message : 'Unable to load approved requisitions.');
+    } finally {
+      setRfLoading(false);
+    }
+  }, [chapterId, canReadQueue]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const [rfRes, lotsRes] = await Promise.all([
+          apiGet<InternalRfOption[]>(`/api/v1/chapters/${chapterId}/internal-rfs?status=approved&limit=50`),
+          apiGet<ChapterLotSummary[]>(`/api/v1/chapters/${chapterId}/stock/lots?limit=50`),
+        ]);
+        if (!active) {
+          return;
+        }
+        setRfList(rfRes.data);
+        setChapterLots(lotsRes.data);
+        setRfLoadError(null);
+        if (canReadQueue) {
+          try {
+            const queueRes = await apiGet<AllocationQueueHint[]>(`/api/v1/chapters/${chapterId}/allocation-queue?limit=50`);
+            if (active) {
+              setQueueHints(queueRes.data);
+            }
+          } catch {
+            if (active) {
+              setQueueHints([]);
+            }
+          }
+        }
+      } catch (err) {
+        if (active) {
+          setRfLoadError(err instanceof Error ? err.message : 'Unable to load approved requisitions.');
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [chapterId, canReadQueue, refreshSignal]);
+
+  function seedFromReservations(resvList: ReservationOptionRecord[], lotList: ChapterLotSummary[]) {
+    const activeRes = resvList.find((r) => r.status === 'ACTIVE') ?? resvList[0];
+    if (!activeRes) {
+      return;
+    }
+    const firstAlloc = activeRes.allocations?.[0];
+    setIssueLines((prev) => {
+      if (prev.length === 1 && !prev[0].reservation_id) {
+        return [
+          {
+            rf_line_id: activeRes.rf_line_id,
+            reservation_id: activeRes.id,
+            expected_reservation_version: String(activeRes.version),
+            expected_reservation_material_version: String(activeRes.material_version),
+            targets: firstAlloc
+              ? [
+                  {
+                    stock_lot_id: firstAlloc.stock_lot_id,
+                    basis_segment_id: firstAlloc.basis_segment_id,
+                    offset_quantity: String(firstAlloc.offset_quantity),
+                    quantity: String(firstAlloc.quantity || activeRes.active_quantity),
+                  },
+                ]
+              : [emptyStockRange()],
+          },
+        ];
+      }
+      return prev;
+    });
+    if (activeRes.allocations && activeRes.allocations.length > 0) {
+      const lotById = new Map(lotList.map((l) => [l.id, l]));
+      setCurrentSources((prev) => {
+        if (prev.length === 1 && !prev[0].stock_lot_id) {
+          return activeRes.allocations!.map((al) => {
+            const lotMeta = lotById.get(al.stock_lot_id);
+            return {
+              stock_lot_id: al.stock_lot_id,
+              expected_lot_material_version: String(lotMeta?.material_version ?? 1),
+              expected_stock_version: String(lotMeta?.stock_version ?? 1),
+            };
+          });
+        }
+        return prev;
+      });
+    }
+  }
+
+  const listRfIssues = useCallback(
+    async (explicitRfId?: string) => {
+      const targetRf = (explicitRfId ?? rfId).trim();
+      if (!targetRf) {
+        return;
+      }
+      setError(null);
+      try {
+        const [revRes, resvRes, issRes, lotsRes] = await Promise.all([
+          apiGet<AllocationReviewData>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/allocation-review`),
+          apiGet<ReservationOptionRecord[]>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/reservations?limit=50`),
+          apiGet<ActualIssueRecord[]>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/actual-issues?limit=50`),
+          apiGet<ChapterLotSummary[]>(`/api/v1/chapters/${chapterId}/stock/lots?limit=50`),
+        ]);
+        setReviewData(revRes.data);
+        setReservations(resvRes.data);
+        setIssuesList(issRes.data);
+        setIssuesJson(issRes.data);
+        setChapterLots(lotsRes.data);
+
+        if (revRes.data.rf) {
+          setExpectedRfVersion(String(revRes.data.rf.version));
+          setExpectedRfMatVersion(String(revRes.data.rf.material_version));
+          setExpectedRfProgressVersion(String(revRes.data.rf.progress_version));
+        }
+        seedFromReservations(resvRes.data, lotsRes.data);
+      } catch (err) {
+        setError(err);
+      }
+    },
+    [chapterId, rfId],
+  );
+
+  useEffect(() => {
+    const targetRf = rfId.trim();
+    if (!targetRf) {
+      return;
+    }
+    let active = true;
+    void (async () => {
+      try {
+        const [revRes, resvRes, issRes, lotsRes] = await Promise.all([
+          apiGet<AllocationReviewData>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/allocation-review`),
+          apiGet<ReservationOptionRecord[]>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/reservations?limit=50`),
+          apiGet<ActualIssueRecord[]>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/actual-issues?limit=50`),
+          apiGet<ChapterLotSummary[]>(`/api/v1/chapters/${chapterId}/stock/lots?limit=50`),
+        ]);
+        if (!active) {
+          return;
+        }
+        setReviewData(revRes.data);
+        setReservations(resvRes.data);
+        setIssuesList(issRes.data);
+        setIssuesJson(issRes.data);
+        setChapterLots(lotsRes.data);
+        setError(null);
+        if (revRes.data.rf) {
+          setExpectedRfVersion(String(revRes.data.rf.version));
+          setExpectedRfMatVersion(String(revRes.data.rf.material_version));
+          setExpectedRfProgressVersion(String(revRes.data.rf.progress_version));
+        }
+        seedFromReservations(resvRes.data, lotsRes.data);
+      } catch (err) {
+        if (active) {
+          setError(err);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [chapterId, rfId, refreshSignal]);
+
+  function handleSelectRf(nextRfId: string) {
+    if (nextRfId === rfId) {
+      return;
+    }
+    rfSelectGenRef.current += 1;
+    setRfId(nextRfId);
+    // Clear dependent child selections while keeping unrelated form edits
+    setIssueId('');
+    setIssueLines([emptyIssueLine()]);
+    setReviewData(null);
+    setReservations([]);
+    setIssuesList([]);
+    setIssuesJson(null);
+    setDetailJson(null);
+    setPrintHtml(null);
+  }
+
+  // Continuously persist unsaved chapter edits in RAM so switching chapters preserves work automatically
+  useEffect(() => {
+    if (skipNextAutoSaveRef.current) {
+      skipNextAutoSaveRef.current = false;
+      return;
+    }
+    const hasUnsaved =
+      rfId.trim() !== '' ||
+      issueId.trim() !== '' ||
+      recipientId.trim() !== '' ||
+      reviseReason.trim() !== '' ||
+      reconcileReason.trim() !== '';
+    if (!hasUnsaved) {
+      return;
+    }
+    memoryDraftStore.saveDraft({
+      userId,
+      chapterId,
+      formKey,
+      label: issueId.trim() ? `Issue Handover (${opKind})` : `Actual Issue (${opKind})`,
+      baseVersion: Number.parseInt(expectedVersion, 10) || null,
+      pendingActionKey: null,
+      payloadJson: JSON.stringify({
+        rfId,
+        issueId,
+        opKind,
+        recipientId,
+        reviseReason,
+        reconcileReason,
+        finding,
+        acknowledgmentId,
+        snapshotSha,
+      }),
+    });
+  }, [
+    userId,
+    chapterId,
+    formKey,
+    rfId,
+    issueId,
+    opKind,
+    recipientId,
+    reviseReason,
+    reconcileReason,
+    finding,
+    acknowledgmentId,
+    snapshotSha,
+    expectedVersion,
+  ]);
 
   const opBlockReason = actionBlockReason(chapterAccess, ...ISSUE_REQUIRED_ACTIONS[opKind]);
+
+  const rfPickerOptions = useMemo<Array<SearchablePickerOption<InternalRfOption>>>(() => {
+    const queueMap = new Map<string, AllocationQueueHint>();
+    for (const q of queueHints) {
+      if (!queueMap.has(q.rf_id)) {
+        queueMap.set(q.rf_id, q);
+      }
+    }
+    return rfList.map((rf) => {
+      const hint = queueMap.get(rf.id);
+      const refText = rf.reference ?? 'Approved Requisition';
+      return {
+        id: rf.id,
+        primaryLabel: refText,
+        secondaryLabel: hint
+          ? `${hint.variant_label} · Unreserved ${hint.unreserved_outstanding_quantity} ${hint.unit_code}`
+          : `${rf.justification ? `${rf.justification} · ` : ''}${rf.needed_at ? `Needed ${formatManilaTime(rf.needed_at)}` : 'Approved'}`,
+        badge: hint ? `Queue #${hint.queue_position}` : (rf.fulfillment_status ?? rf.status ?? 'approved').replaceAll('_', ' '),
+        badgeTone: hint?.allocation_tier === 'active_commitment' ? 'ready' : 'neutral',
+        searchText: `${refText} ${rf.justification ?? ''} ${hint?.variant_label ?? ''}`,
+        meta: rf,
+      };
+    });
+  }, [rfList, queueHints]);
+
+  const issuePickerOptions = useMemo<Array<SearchablePickerOption<ActualIssueRecord>>>(() => {
+    return issuesList.map((iss, idx) => ({
+      id: iss.id,
+      primaryLabel: iss.issue_reference ?? `Handover Draft #${idx + 1}`,
+      secondaryLabel: `Status: ${iss.status} · v${iss.version}`,
+      badge: iss.status.replaceAll('_', ' '),
+      badgeTone: iss.status === 'posted' ? 'ready' : 'warning',
+      meta: iss,
+    }));
+  }, [issuesList]);
+
+  const recipientOptions = useMemo<Array<SearchablePickerOption<{ user_id: string }>>>(() => {
+    const out: Array<SearchablePickerOption<{ user_id: string }>> = [];
+    const seen = new Set<string>();
+    const addCandidate = (id: string | null | undefined, label: string, detail: string, badge: string, tone: 'ready' | 'warning' | 'neutral') => {
+      if (!id || seen.has(id)) {
+        return;
+      }
+      seen.add(id);
+      const isSelf = id === chapterContext?.user_id;
+      out.push({
+        id,
+        primaryLabel: label,
+        secondaryLabel: detail,
+        badge: isSelf ? 'Cannot Issue to Self' : badge,
+        badgeTone: isSelf ? 'warning' : tone,
+        disabled: isSelf,
+        disabledReason: isSelf ? 'Issuing officer cannot be the recipient of their own actual issue.' : undefined,
+        meta: { user_id: id },
+      });
+    };
+
+    const selectedRf = rfList.find((r) => r.id === rfId);
+    const requesterId =
+      reviewData?.rf?.requester_id ??
+      reviewData?.rf?.requester_user_id ??
+      selectedRf?.requester_id ??
+      selectedRf?.requester_user_id;
+    addCandidate(
+      requesterId,
+      `Requisition Requester (${selectedRf?.reference ?? 'Selected RF'})`,
+      'Original requesting committee representative',
+      'Requester',
+      'ready',
+    );
+    addCandidate(
+      reviewData?.rf?.approval?.approved_by?.user_id,
+      `RF Approver (${selectedRf?.reference ?? 'Selected RF'})`,
+      'Approving authority for this requisition',
+      'Approver',
+      'neutral',
+    );
+    for (const rf of rfList) {
+      addCandidate(
+        rf.requester_id ?? rf.requester_user_id,
+        `Committee Officer (${rf.reference ?? 'Chapter RF'})`,
+        'Authorized chapter requester',
+        'Chapter Officer',
+        'neutral',
+      );
+    }
+    if (chapterContext?.user_id) {
+      addCandidate(
+        chapterContext.user_id,
+        'Current Signed-in Officer',
+        `${chapterContext.membership.chapter.display_name} authorized member`,
+        'Current User',
+        'neutral',
+      );
+    }
+    return out;
+  }, [rfList, rfId, reviewData, chapterContext]);
+
+  const reservationOptions = useMemo<Array<SearchablePickerOption<ReservationOptionRecord>>>(() => {
+    return reservations.map((r, idx) => ({
+      id: r.id,
+      primaryLabel: `Reservation #${idx + 1} (${r.active_quantity} units active)`,
+      secondaryLabel: `Status: ${r.status} · Auto-fills reserved batch ranges`,
+      badge: r.status,
+      badgeTone: r.status === 'ACTIVE' ? 'ready' : 'neutral',
+      meta: r,
+    }));
+  }, [reservations]);
+
+  const postBatchOptions = useMemo(() => {
+    const out: Array<SearchablePickerOption<SourcePinInput>> = [];
+    const seen = new Set<string>();
+    for (const lot of chapterLots) {
+      if (seen.has(lot.id)) {
+        continue;
+      }
+      seen.add(lot.id);
+      out.push({
+        id: lot.id,
+        primaryLabel: `${lot.historical_variant_label ?? 'Stock Batch'} (${lot.source?.reference ?? lot.id.slice(0, 8)})`,
+        secondaryLabel: `${lot.quantity_on_hand} on hand · Batch versions ready`,
+        badge: `v${lot.stock_version}`,
+        badgeTone: 'ready',
+        meta: {
+          stock_lot_id: lot.id,
+          expected_lot_material_version: String(lot.material_version),
+          expected_stock_version: String(lot.stock_version),
+        },
+      });
+    }
+    for (const line of reviewData?.lines ?? []) {
+      for (const lot of line.candidate_lots ?? []) {
+        if (seen.has(lot.stock_lot_id)) {
+          continue;
+        }
+        seen.add(lot.stock_lot_id);
+        out.push({
+          id: lot.stock_lot_id,
+          primaryLabel: lot.source_reference ?? `Stock Batch ${lot.stock_lot_id.slice(0, 8)}`,
+          secondaryLabel: `${lot.free_quantity ?? lot.quantity_on_hand} free · Batch versions ready`,
+          badge: `v${lot.stock_version}`,
+          badgeTone: 'ready',
+          meta: {
+            stock_lot_id: lot.stock_lot_id,
+            expected_lot_material_version: String(lot.material_version),
+            expected_stock_version: String(lot.stock_version),
+          },
+        });
+      }
+    }
+    return out;
+  }, [chapterLots, reviewData]);
 
   function parkDraftInMemory() {
     memoryDraftStore.saveDraft({
       userId,
       chapterId,
       formKey,
-      label: issueId.trim() ? `Issue ${issueId.trim().slice(0, 8)} (${opKind})` : `Actual Issue (${opKind})`,
+      label: issueId.trim() ? `Issue Handover (${opKind})` : `Actual Issue (${opKind})`,
       baseVersion: Number.parseInt(expectedVersion, 10) || null,
       pendingActionKey: null,
       payloadJson: JSON.stringify({
@@ -170,71 +682,58 @@ export function ActualIssueWorkspace({
     setStatusMessage('Issue handover details saved as a temporary draft for this session.');
   }
 
-  const listRfIssues = useCallback(async () => {
-    if (!rfId.trim()) {
+  async function handleInlineHandoverUpload() {
+    if (!issueId.trim() || !handoverFiles || handoverFiles.length === 0) {
+      setError(new Error('Select an issue handover and attach the signed handover scan first.'));
       return;
     }
+    setUploadingEvidence(true);
     setError(null);
     try {
-      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/internal-rfs/${rfId.trim()}/actual-issues?limit=25`);
-      setIssuesJson(res.data);
+      const fd = new FormData();
+      fd.append('purpose', 'actual_issue');
+      fd.append('record_id', issueId.trim());
+      for (const f of Array.from(handoverFiles)) {
+        fd.append('attachments', f, f.name);
+      }
+      const { result } = await apiMutate<{
+        evidence_id: string;
+        version_id: string;
+        attachments: Array<{ attachment_id: string; sha256: string }>;
+      }>('POST', `/api/v1/chapters/${chapterId}/evidence`, fd);
+
+      setEvidenceBinding({
+        evidence_id: result.data.evidence_id,
+        version_id: result.data.version_id,
+        attachments: result.data.attachments.map((a) => ({
+          attachment_id: a.attachment_id,
+          sha256: a.sha256,
+        })),
+      });
+      setStatusMessage(`Signed handover slip uploaded (${result.data.attachments.length} file).`);
     } catch (err) {
       setError(err);
-    }
-  }, [chapterId, rfId]);
-
-  useEffect(() => {
-    if (refreshSignal === 0 || !rfId.trim()) {
-      return;
-    }
-    let active = true;
-    void (async () => {
-      try {
-        const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/internal-rfs/${rfId.trim()}/actual-issues?limit=25`);
-        if (active) {
-          setIssuesJson(res.data);
-          setError(null);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err);
+      if (err instanceof ContractApiError && [403, 404, 409].includes(err.status)) {
+        // Refresh live authorized choices without wiping unrelated form inputs
+        void loadChapterDiscovery();
+        if (rfId.trim()) {
+          void listRfIssues(rfId);
         }
       }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [chapterId, rfId, refreshSignal]);
-
-  async function readIssuePart(part: 'detail' | 'history' | 'movements' | 'related' | 'reconciliation' | 'print') {
-    if (!issueId.trim()) {
-      return;
-    }
-    setError(null);
-    const prefix = `/api/v1/chapters/${chapterId}/actual-issues/${issueId.trim()}`;
-    try {
-      if (part === 'print') {
-        const html = await apiGetText(`${prefix}/print`);
-        setPrintHtml(html);
-      } else {
-        const suffix = part === 'detail' ? '' : `/${part}${part === 'reconciliation' ? '' : '?limit=25'}`;
-        const res = await apiGet<unknown>(`${prefix}${suffix}`);
-        setDetailJson(res.data);
-      }
-    } catch (err) {
-      setError(err);
+    } finally {
+      setUploadingEvidence(false);
     }
   }
 
   function buildBody(): Record<string, unknown> {
+    const issueVers = {
+      expected_version: Number.parseInt(expectedVersion, 10) || 1,
+      expected_material_version: Number.parseInt(expectedMatVersion, 10) || 1,
+    };
     const rfVers = {
       expected_rf_version: Number.parseInt(expectedRfVersion, 10) || 1,
       expected_rf_material_version: Number.parseInt(expectedRfMatVersion, 10) || 1,
       expected_rf_progress_version: Number.parseInt(expectedRfProgressVersion, 10) || 1,
-    };
-    const issueVers = {
-      expected_version: Number.parseInt(expectedVersion, 10) || 1,
-      expected_material_version: Number.parseInt(expectedMatVersion, 10) || 1,
     };
     const mappedLines = issueLines.map((ln) => ({
       rf_line_id: ln.rf_line_id.trim(),
@@ -316,6 +815,7 @@ export function ActualIssueWorkspace({
     try {
       const { result } = await apiMutate<Record<string, unknown>>(target.method, target.path, buildBody(), key);
       const { record, operationId } = unwrapMutationData<Record<string, unknown>>(result.data);
+      skipNextAutoSaveRef.current = true;
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setReplayed(result.replayed);
       setDetailJson(result.data);
@@ -357,18 +857,25 @@ export function ActualIssueWorkspace({
         setAcknowledgmentId(ackId);
       }
       const issueOpLabels: Record<IssueOpKind, string> = {
-        prepare: 'Issue handover prepared',
+        prepare: 'Issue handover prepared — print sheet and upload signed paper next',
         revise: 'Prepared issue updated',
-        ack: 'Signed paper acknowledgment recorded',
+        ack: 'Signed paper handover confirmed — ready to post & deduct stock',
         post: 'Stock issue completed',
         reconcile: 'Verification note recorded',
       };
       setStatusMessage(`${issueOpLabels[opKind]}. Reference: ${key}`);
       if (rfId.trim()) {
-        await listRfIssues();
+        await listRfIssues(rfId);
       }
     } catch (err) {
       setError(err);
+      if (err instanceof ContractApiError && [403, 404, 409].includes(err.status)) {
+        // Refresh live authorized choices without wiping unrelated form inputs
+        void loadChapterDiscovery();
+        if (rfId.trim()) {
+          void listRfIssues(rfId);
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -401,65 +908,84 @@ export function ActualIssueWorkspace({
     }
   }
 
+  async function readIssuePart(kind: 'detail' | 'history' | 'movements' | 'related' | 'reconciliation' | 'print') {
+    if (!issueId.trim()) {
+      return;
+    }
+    setError(null);
+    const id = issueId.trim();
+    const base = `/api/v1/chapters/${chapterId}/actual-issues/${id}`;
+    try {
+      if (kind === 'print') {
+        const html = await apiGetText(`${base}/print`);
+        setPrintHtml(html);
+        setDetailJson(null);
+        return;
+      }
+      setPrintHtml(null);
+      const pathMap: Record<Exclude<typeof kind, 'print'>, string> = {
+        detail: base,
+        history: `${base}/history`,
+        movements: `${base}/movements`,
+        related: `${base}/related`,
+        reconciliation: `${base}/reconciliation`,
+      };
+      const res = await apiGet<unknown>(pathMap[kind]);
+      if (kind === 'history' || kind === 'movements' || kind === 'related' || kind === 'reconciliation') {
+        setIssuesJson(res.data);
+      } else {
+        setDetailJson(res.data);
+      }
+    } catch (err) {
+      setError(err);
+    }
+  }
+
   return (
     <main className="p03-workspace-shell">
       <div className="p03-workspace-inner">
         <header className="p03-top-header surface-card">
           <div className="p03-header-search-row">
-            <div className="p03-search-input-wrap">
-              <svg
-                className="p03-search-icon"
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
-              </svg>
-              <input
-                id="iss-rf"
-                className="form-control p03-search-input"
-                value={rfId}
-                onChange={(e) => setRfId(e.target.value)}
-                placeholder="Enter requisition reference to load issue handovers..."
-                aria-label="Enter requisition reference"
+            <div className="p03-search-input-wrap" style={{ flex: '1 1 360px' }}>
+              <SearchableRecordPicker
+                id="iss-rf-picker"
+                label="Select Approved Requisition"
+                placeholder="Search approved requisition by number, item, or justification..."
+                valueId={rfId}
+                options={rfPickerOptions}
+                loading={rfLoading}
+                errorMessage={rfLoadError}
+                onRetry={() => void loadChapterDiscovery()}
+                emptyMessage="No approved requisitions available in this chapter."
+                onSelect={(opt) => handleSelectRf(opt ? opt.id : '')}
               />
             </div>
 
             <div className="p03-search-meta">
-              {rfId.trim().length > 0 && (
-                <button
-                  type="button"
-                  className="p03-search-clear-btn"
-                  onClick={() => setRfId('')}
-                >
-                  Clear
-                </button>
-              )}
+              <button
+                type="button"
+                className="p03-search-clear-btn"
+                onClick={() => void loadChapterDiscovery()}
+              >
+                Refresh RFs
+              </button>
               <button
                 type="button"
                 className="p03-search-action-btn"
-                onClick={() => {
-                  void listRfIssues();
-                  setViewTab('inspect');
-                }}
+                onClick={() => void listRfIssues()}
                 disabled={!rfId.trim()}
               >
-                Load Handovers
+                Reload Handovers
               </button>
             </div>
           </div>
 
           <div className="p03-header-nav-row">
             <div className="p03-header-left">
-              <h1 className="p03-main-title">Stock Issue Handovers</h1>
+              <h1 className="p03-main-title">Actual Issue &amp; Handover</h1>
             </div>
             <div className="p03-header-controls">
-              <div className="p03-filter-pill-bar" role="tablist" aria-label="Issue handover views">
+              <div className="p03-filter-pill-bar" role="tablist" aria-label="Actual issue views">
                 <button
                   type="button"
                   role="tab"
@@ -467,7 +993,7 @@ export function ActualIssueWorkspace({
                   className={`p03-filter-pill ${viewTab === 'workflow' ? 'is-active' : ''}`}
                   onClick={() => setViewTab('workflow')}
                 >
-                  Record Handover
+                  Issue Steps
                 </button>
                 <button
                   type="button"
@@ -476,7 +1002,7 @@ export function ActualIssueWorkspace({
                   className={`p03-filter-pill ${viewTab === 'inspect' ? 'is-active' : ''}`}
                   onClick={() => setViewTab('inspect')}
                 >
-                  Inspect &amp; Movements
+                  Handover History &amp; Movements
                 </button>
                 <button
                   type="button"
@@ -485,7 +1011,7 @@ export function ActualIssueWorkspace({
                   className={`p03-filter-pill ${viewTab === 'status' ? 'is-active' : ''}`}
                   onClick={() => setViewTab('status')}
                 >
-                  Status &amp; Print
+                  Submission Status
                 </button>
               </div>
               {onBackToDashboard && (
@@ -506,15 +1032,19 @@ export function ActualIssueWorkspace({
             <div>
               <h2 className="p03-section-title">Issue Handover Execution</h2>
               <p className="form-card-subtitle">
-                Prepare batch releases, bind signed paper handovers, and deduct chapter inventory.
+                Select a requisition, pick active reservations and recipients, attach signed handover paper, and complete stock deduction.
               </p>
             </div>
             <div className="p03-chip-wrap">
               {rfId.trim() && (
-                <span className="p03-version-pill p03-mono-inline">Requisition Loaded</span>
+                <span className="p03-version-pill">
+                  {rfPickerOptions.find((o) => o.id === rfId)?.primaryLabel ?? 'Requisition Loaded'}
+                </span>
               )}
               {issueId.trim() && (
-                <span className="p03-version-pill p03-mono-inline">Handover Selected</span>
+                <span className="p03-version-pill">
+                  {issuePickerOptions.find((o) => o.id === issueId)?.primaryLabel ?? 'Handover Selected'}
+                </span>
               )}
             </div>
           </div>
@@ -529,21 +1059,36 @@ export function ActualIssueWorkspace({
         {viewTab === 'workflow' && (
           <div className="p02-members-grid">
             <section className="p03-card surface-card form-stack" aria-label="Issue handover context references">
-              <h2 className="p03-section-title">
-                Handover References &amp; Actions
-              </h2>
+              <h2 className="p03-section-title">Handover Selection &amp; Shortcuts</h2>
               <div className="form-stack">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="iss-id">
-                    Issue Handover Reference
-                  </label>
-                  <input
-                    id="iss-id"
-                    className="form-control"
-                    value={issueId}
-                    onChange={(e) => setIssueId(e.target.value)}
-                  />
-                </div>
+                <SearchableRecordPicker
+                  id="iss-issue-picker"
+                  label="Existing Issue Handover"
+                  placeholder="Select an existing handover for this requisition..."
+                  valueId={issueId}
+                  options={issuePickerOptions}
+                  emptyMessage="No handover records exist yet for this requisition."
+                  onSelect={(opt) => {
+                    if (!opt) {
+                      setIssueId('');
+                      return;
+                    }
+                    setIssueId(opt.id);
+                    setExpectedVersion(String(opt.meta.version));
+                    setExpectedMatVersion(String(opt.meta.material_version));
+                    setSnapshotMatVer(String(opt.meta.snapshot?.material_version ?? opt.meta.material_version));
+                    if (opt.meta.snapshot?.sha256) {
+                      setSnapshotSha(opt.meta.snapshot.sha256);
+                    }
+                    const ackId = opt.meta.acknowledgment?.acknowledgment_id ?? opt.meta.acknowledgment?.id;
+                    if (ackId) {
+                      setAcknowledgmentId(ackId);
+                    }
+                    if (opt.meta.recipient_id) {
+                      setRecipientId(opt.meta.recipient_id);
+                    }
+                  }}
+                />
 
                 <div className="p02-compact-btn-group">
                   <button
@@ -617,9 +1162,7 @@ export function ActualIssueWorkspace({
             </section>
 
             <section className="p03-card surface-card form-stack" aria-label="Record or update issue handover">
-              <h2 className="p03-section-title">
-                Record or Update Issue Handover
-              </h2>
+              <h2 className="p03-section-title">Record or Update Issue Handover</h2>
 
               {opBlockReason && (
                 <div className="callout-banner is-warning">
@@ -647,87 +1190,20 @@ export function ActualIssueWorkspace({
                   </select>
                 </div>
 
-                {opKind !== 'prepare' && (
-                  <div className="p03-two-col">
-                    <div className="form-group">
-                      <label className="form-label">Current Record Version</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={1}
-                        required
-                        value={expectedVersion}
-                        onChange={(e) => setExpectedVersion(e.target.value)}
-                      />
-                    </div>
-                    {opKind !== 'reconcile' && (
-                      <div className="form-group">
-                        <label className="form-label">Current Content Version</label>
-                        <input
-                          className="form-control"
-                          type="number"
-                          min={1}
-                          required
-                          value={expectedMatVersion}
-                          onChange={(e) => setExpectedMatVersion(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {(opKind === 'prepare' || opKind === 'revise' || opKind === 'post') && (
-                  <div className="p02-three-col-grid">
-                    <div className="form-group">
-                      <label className="form-label">Requisition Version</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={1}
-                        required
-                        value={expectedRfVersion}
-                        onChange={(e) => setExpectedRfVersion(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Content Version</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={1}
-                        required
-                        value={expectedRfMatVersion}
-                        onChange={(e) => setExpectedRfMatVersion(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Progress Version</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={1}
-                        required
-                        value={expectedRfProgressVersion}
-                        onChange={(e) => setExpectedRfProgressVersion(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {(opKind === 'prepare' || opKind === 'revise') && (
                   <>
-                    <div className="p02-three-col-grid">
+                    <SearchableRecordPicker
+                      id="iss-recipient-picker"
+                      label="Recipient Officer"
+                      placeholder="Select receiving officer..."
+                      valueId={recipientId}
+                      options={recipientOptions}
+                      onSelect={(opt) => setRecipientId(opt ? opt.id : '')}
+                    />
+
+                    <div className="p03-two-col">
                       <div className="form-group">
-                        <label className="form-label">Recipient Officer</label>
-                        <input
-                          className="form-control"
-                          required
-                          value={recipientId}
-                          onChange={(e) => setRecipientId(e.target.value)}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Date &amp; Time Handed Over</label>
+                        <label className="form-label">Handover Timestamp</label>
                         <input
                           className="form-control"
                           required
@@ -736,7 +1212,7 @@ export function ActualIssueWorkspace({
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Date &amp; Time Acknowledged</label>
+                        <label className="form-label">Acknowledgment Timestamp</label>
                         <input
                           className="form-control"
                           required
@@ -773,91 +1249,80 @@ export function ActualIssueWorkspace({
 
                     <div className="form-stack">
                       <div className="p04-line-top">
-                        <span className="form-label">
-                          Issue Batch Lines &amp; Targets
-                        </span>
+                        <span className="form-label">Reserved Batch Releases</span>
                         <button
                           type="button"
                           className="p02-compact-btn"
                           onClick={() => setIssueLines((p) => [...p, emptyIssueLine()])}
                         >
-                          + Batch Line
+                          + Add Line
                         </button>
                       </div>
                       <div className="p04-lines-list">
                         {issueLines.map((ln, idx) => (
-                          <div key={idx} className="p04-line-card">
-                            <div className="p03-two-col">
-                              <div className="form-group">
-                                <label className="form-label">Requisition Line Reference</label>
-                                <input
-                                  className="form-control"
-                                  required
-                                  value={ln.rf_line_id}
-                                  onChange={(e) =>
-                                    setIssueLines((p) =>
-                                      p.map((x, i) => (i === idx ? { ...x, rf_line_id: e.target.value } : x)),
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div className="form-group">
-                                <label className="form-label">Reservation Reference</label>
-                                <input
-                                  className="form-control"
-                                  required
-                                  value={ln.reservation_id}
-                                  onChange={(e) =>
-                                    setIssueLines((p) =>
-                                      p.map((x, i) => (i === idx ? { ...x, reservation_id: e.target.value } : x)),
-                                    )
-                                  }
-                                />
-                              </div>
-                            </div>
-                            <div className="p03-two-col">
-                              <div className="form-group">
-                                <label className="form-label">Reservation Version</label>
-                                <input
-                                  className="form-control"
-                                  type="number"
-                                  min={1}
-                                  required
-                                  value={ln.expected_reservation_version}
-                                  onChange={(e) =>
-                                    setIssueLines((p) =>
-                                      p.map((x, i) =>
-                                        i === idx ? { ...x, expected_reservation_version: e.target.value } : x,
-                                      ),
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div className="form-group">
-                                <label className="form-label">Reservation Content Version</label>
-                                <input
-                                  className="form-control"
-                                  type="number"
-                                  min={1}
-                                  required
-                                  value={ln.expected_reservation_material_version}
-                                  onChange={(e) =>
-                                    setIssueLines((p) =>
-                                      p.map((x, i) =>
-                                        i === idx ? { ...x, expected_reservation_material_version: e.target.value } : x,
-                                      ),
-                                    )
-                                  }
-                                />
-                              </div>
-                            </div>
-                            <StockRangeRows
-                              label="Selected Reserved Ranges"
-                              rows={ln.targets}
-                              onChange={(next) =>
-                                setIssueLines((p) => p.map((x, i) => (i === idx ? { ...x, targets: next } : x)))
-                              }
+                          <div key={idx} className="p04-line-card form-stack">
+                            <SearchableRecordPicker
+                              id={`iss-resv-picker-${idx}`}
+                              label={`Active Reservation #${idx + 1}`}
+                              placeholder="Select active reservation for this requisition..."
+                              valueId={ln.reservation_id}
+                              options={reservationOptions}
+                              emptyMessage="No active reservations found for this requisition."
+                              onSelect={(opt) => {
+                                if (!opt) {
+                                  setIssueLines((p) => p.map((x, i) => (i === idx ? emptyIssueLine() : x)));
+                                  return;
+                                }
+                                const firstAlloc = opt.meta.allocations?.[0];
+                                setIssueLines((p) =>
+                                  p.map((x, i) =>
+                                    i === idx
+                                      ? {
+                                          rf_line_id: opt.meta.rf_line_id,
+                                          reservation_id: opt.id,
+                                          expected_reservation_version: String(opt.meta.version),
+                                          expected_reservation_material_version: String(opt.meta.material_version),
+                                          targets: firstAlloc
+                                            ? [
+                                                {
+                                                  stock_lot_id: firstAlloc.stock_lot_id,
+                                                  basis_segment_id: firstAlloc.basis_segment_id,
+                                                  offset_quantity: String(firstAlloc.offset_quantity),
+                                                  quantity: String(firstAlloc.quantity || opt.meta.active_quantity),
+                                                },
+                                              ]
+                                            : x.targets,
+                                        }
+                                      : x,
+                                  ),
+                                );
+                              }}
                             />
+
+                            {ln.targets.map((tgt, tIdx) => (
+                              <div key={tIdx} className="form-group">
+                                <label className="form-label">Quantity to Issue from Selected Reservation</label>
+                                <input
+                                  className="form-control"
+                                  required
+                                  value={tgt.quantity}
+                                  onChange={(e) =>
+                                    setIssueLines((p) =>
+                                      p.map((x, i) =>
+                                        i === idx
+                                          ? {
+                                              ...x,
+                                              targets: x.targets.map((row, rIdx) =>
+                                                rIdx === tIdx ? { ...row, quantity: e.target.value } : row,
+                                              ),
+                                            }
+                                          : x,
+                                      ),
+                                    )
+                                  }
+                                />
+                              </div>
+                            ))}
                           </div>
                         ))}
                       </div>
@@ -867,33 +1332,39 @@ export function ActualIssueWorkspace({
 
                 {opKind === 'ack' && (
                   <>
-                    <div className="p03-two-col">
-                      <div className="form-group">
-                        <label className="form-label">Signed Document Version</label>
-                        <input
-                          className="form-control"
-                          type="number"
-                          min={1}
-                          required
-                          value={snapshotMatVer}
-                          onChange={(e) => setSnapshotMatVer(e.target.value)}
-                        />
+                    <div className="p04-line-card form-stack">
+                      <span className="form-label">Upload Signed Handover Paper</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        multiple
+                        className="form-control"
+                        onChange={(e) => setHandoverFiles(e.target.files)}
+                      />
+                      <div className="p02-compact-btn-group">
+                        <button
+                          type="button"
+                          className="p02-compact-btn"
+                          disabled={uploadingEvidence || !issueId.trim() || !handoverFiles?.length}
+                          onClick={() => void handleInlineHandoverUpload()}
+                        >
+                          {uploadingEvidence ? 'Uploading...' : 'Upload & Attach Signed Paper'}
+                        </button>
+                        {evidenceBinding.evidence_id && (
+                          <span className="s02-status-tag is-ready">
+                            Signed Document Ready ({evidenceBinding.attachments.length} file)
+                          </span>
+                        )}
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Signed Document Verification Tag</label>
-                        <input
-                          className="form-control"
-                          required
-                          value={snapshotSha}
-                          onChange={(e) => setSnapshotSha(e.target.value)}
+                      <details>
+                        <summary className="picker-secondary-label">Advanced: paste existing evidence binding</summary>
+                        <EvidenceBindingFields
+                          label="Signed Handover Document Binding"
+                          value={evidenceBinding}
+                          onChange={setEvidenceBinding}
                         />
-                      </div>
+                      </details>
                     </div>
-                    <EvidenceBindingFields
-                      label="Signed Handover Document Binding"
-                      value={evidenceBinding}
-                      onChange={setEvidenceBinding}
-                    />
                     <label className={`p03-checkbox-row ${matchesPaper ? 'is-checked' : ''}`}>
                       <input
                         type="checkbox"
@@ -912,21 +1383,18 @@ export function ActualIssueWorkspace({
                 )}
 
                 {opKind === 'post' && (
-                  <>
-                    <div className="form-group">
-                      <label className="form-label">Signed Acknowledgment Reference</label>
-                      <input
-                        className="form-control"
-                        required
-                        value={acknowledgmentId}
-                        onChange={(e) => setAcknowledgmentId(e.target.value)}
-                      />
+                  <div className="form-stack">
+                    <div className="callout-banner is-info">
+                      <span className="callout-dot dot-info" aria-hidden="true" />
+                      <span>
+                        {acknowledgmentId.trim()
+                          ? 'Signed handover acknowledgment is attached and ready for stock deduction.'
+                          : 'Confirm step "2. Confirm Signed Paper Handover" first so the signed acknowledgment links automatically.'}
+                      </span>
                     </div>
-                    <div className="form-stack">
+                    <div className="p04-lines-list">
                       <div className="p04-line-top">
-                        <span className="form-label">
-                          Batches to Deduct Stock From
-                        </span>
+                        <span className="form-label">Batches to Deduct Stock From</span>
                         <button
                           type="button"
                           className="p02-compact-btn"
@@ -937,64 +1405,29 @@ export function ActualIssueWorkspace({
                             ])
                           }
                         >
-                          + Batch
+                          + Add Batch
                         </button>
                       </div>
-                      <div className="p04-lines-list">
-                        {currentSources.map((src, idx) => (
-                          <div key={idx} className="p04-line-card">
-                            <div className="p02-three-col-grid">
-                              <div className="form-group">
-                                <label className="form-label">Stock Batch Reference</label>
-                                <input
-                                  className="form-control"
-                                  required
-                                  value={src.stock_lot_id}
-                                  onChange={(e) =>
-                                    setCurrentSources((p) =>
-                                      p.map((x, i) => (i === idx ? { ...x, stock_lot_id: e.target.value } : x)),
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div className="form-group">
-                                <label className="form-label">Batch Content Version</label>
-                                <input
-                                  className="form-control"
-                                  type="number"
-                                  min={1}
-                                  required
-                                  value={src.expected_lot_material_version}
-                                  onChange={(e) =>
-                                    setCurrentSources((p) =>
-                                      p.map((x, i) =>
-                                        i === idx ? { ...x, expected_lot_material_version: e.target.value } : x,
-                                      ),
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div className="form-group">
-                                <label className="form-label">Stock Version</label>
-                                <input
-                                  className="form-control"
-                                  type="number"
-                                  min={1}
-                                  required
-                                  value={src.expected_stock_version}
-                                  onChange={(e) =>
-                                    setCurrentSources((p) =>
-                                      p.map((x, i) => (i === idx ? { ...x, expected_stock_version: e.target.value } : x)),
-                                    )
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      {currentSources.map((src, idx) => (
+                        <div key={idx} className="p04-line-card">
+                          <SearchableRecordPicker
+                            id={`iss-post-lot-${idx}`}
+                            label={`Stock Batch #${idx + 1}`}
+                            placeholder="Select batch to deduct stock from..."
+                            valueId={src.stock_lot_id}
+                            options={postBatchOptions}
+                            emptyMessage="Select an approved requisition to view eligible stock batches."
+                            onSelect={(opt) => {
+                              if (!opt) {
+                                return;
+                              }
+                              setCurrentSources((p) => p.map((x, i) => (i === idx ? opt.meta : x)));
+                            }}
+                          />
+                        </div>
+                      ))}
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {opKind === 'reconcile' && (
@@ -1041,11 +1474,23 @@ export function ActualIssueWorkspace({
                       <span className="p03-checkbox-main">Include signed document attachment</span>
                     </label>
                     {attachReconcileEvidence && (
-                      <EvidenceBindingFields
-                        label="Reconciliation Signed Document Binding"
-                        value={evidenceBinding}
-                        onChange={setEvidenceBinding}
-                      />
+                      <div className="p04-line-card form-stack">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          multiple
+                          className="form-control"
+                          onChange={(e) => setHandoverFiles(e.target.files)}
+                        />
+                        <button
+                          type="button"
+                          className="p02-compact-btn"
+                          disabled={uploadingEvidence || !issueId.trim() || !handoverFiles?.length}
+                          onClick={() => void handleInlineHandoverUpload()}
+                        >
+                          {uploadingEvidence ? 'Uploading...' : 'Upload & Attach Signed Paper'}
+                        </button>
+                      </div>
                     )}
                   </>
                 )}
@@ -1074,12 +1519,10 @@ export function ActualIssueWorkspace({
 
         {viewTab === 'inspect' && (
           <section className="p03-card surface-card form-stack" aria-label="Handovers and movement records">
-            <h2 className="p03-section-title">
-              Handover List, History &amp; Movements
-            </h2>
+            <h2 className="p03-section-title">Handover List, History &amp; Movements</h2>
             {issuesJson === null ? (
               <p className="p03-muted-copy">
-                No handover records loaded. Enter a requisition reference in the search bar above and click “Load Handovers”.
+                No handover records loaded. Select an approved requisition above to inspect live handovers.
               </p>
             ) : (
               <pre className="json-box">{JSON.stringify(issuesJson, null, 2)}</pre>
@@ -1090,9 +1533,7 @@ export function ActualIssueWorkspace({
         {viewTab === 'status' && (
           <div className="p02-members-grid">
             <section className="p03-card surface-card form-stack" aria-label="Status lookup">
-              <h2 className="p03-section-title">
-                Check Handover Submission Status
-              </h2>
+              <h2 className="p03-section-title">Check Handover Submission Status</h2>
               <div className="form-stack">
                 <form onSubmit={lookupByKey} className="form-group">
                   <label className="form-label" htmlFor="iss-lkp">
@@ -1133,9 +1574,7 @@ export function ActualIssueWorkspace({
             </section>
 
             <section className="p03-card surface-card form-stack" aria-label="Detail and printable form">
-              <h2 className="p03-section-title">
-                Detail &amp; Printable Form
-              </h2>
+              <h2 className="p03-section-title">Detail &amp; Printable Form</h2>
               {detailJson === null && printHtml === null ? (
                 <p className="p03-muted-copy">
                   No result loaded. Inspect a handover detail or check a submission reference on the left.

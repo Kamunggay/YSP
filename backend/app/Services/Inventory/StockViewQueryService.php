@@ -7,10 +7,15 @@ use App\Models\InventoryLot;
 use App\Models\RfReservationAllocation;
 use App\Models\StockHold;
 use App\Models\StockReservation;
+use App\Services\Inventory\Participants\OpenProcurementSupplyProvider;
 use App\Services\Shared\BcMath;
 
 class StockViewQueryService
 {
+    public function __construct(
+        private readonly ?OpenProcurementSupplyProvider $supplyProvider = null,
+    ) {}
+
     /**
      * Get raw numeric/decimal metrics for the seven non-additive stock views.
      * Uses bcmath scale-6 precision and half-open interval union arithmetic so
@@ -159,6 +164,60 @@ class StockViewQueryService
             $availableToAllocateStr = BcMath::str('0');
         }
 
+        // Subtract uninterpreted / immediately_allocatable=false usable quantities so available_to_allocate stays honest per ADR 0004
+        $uninterpretedStr = BcMath::str('0');
+        foreach ($lots as $lot) {
+            if (strtoupper($lot->condition) !== 'USABLE' || strtoupper($lot->custody) !== 'STOCKROOM') {
+                continue;
+            }
+            $lotQty = BcMath::str($lot->quantity_on_hand);
+            if (! BcMath::isPositive($lotQty)) {
+                continue;
+            }
+            $immediatelyAllocatable = $lot->getAttribute('immediately_allocatable');
+            if ($immediatelyAllocatable === false || $immediatelyAllocatable === 0 || $immediatelyAllocatable === '0') {
+                $uninterpretedStr = BcMath::add($uninterpretedStr, $lotQty);
+
+                continue;
+            }
+            if (is_array($lot->segments) && $lot->segments !== []) {
+                $consumedData = $this->getConsumedIntervalsForLot($lot);
+                foreach ($lot->segments as $seg) {
+                    if (! is_array($seg) || ($seg['restrictions']['state'] ?? 'unrestricted') !== 'uninterpreted') {
+                        continue;
+                    }
+                    $segStart = BcMath::str($seg['offset_quantity'] ?? '0');
+                    $segQty = BcMath::str($seg['quantity'] ?? '0');
+                    if (! BcMath::isPositive($segQty)) {
+                        continue;
+                    }
+                    $overlap = BcMath::intervalUnionLength(BcMath::intersectIntervalLists(
+                        [['offset' => $segStart, 'quantity' => $segQty]],
+                        $consumedData['consumed_intervals']
+                    ));
+                    $rem = BcMath::sub($segQty, $overlap);
+                    if (BcMath::isPositive($rem)) {
+                        $uninterpretedStr = BcMath::add($uninterpretedStr, $rem);
+                    }
+                }
+            }
+        }
+        $availableToAllocateStr = BcMath::sub($availableToAllocateStr, $uninterpretedStr);
+        if (BcMath::comp($availableToAllocateStr, '0') < 0) {
+            $availableToAllocateStr = BcMath::str('0');
+        }
+
+        $inboundOpenPoStr = BcMath::str('0');
+        $variantIdsForPo = $variantId ? [$variantId] : $lots->pluck('variant_id')->unique()->values()->all();
+        if ($variantIdsForPo !== []) {
+            $provider = $this->supplyProvider ?? app(OpenProcurementSupplyProvider::class);
+            foreach ($provider->getInboundSourcesForVariants($chapterId, $variantIdsForPo) as $source) {
+                if (($source['source_kind'] ?? null) === 'po') {
+                    $inboundOpenPoStr = BcMath::add($inboundOpenPoStr, BcMath::str($source['open_quantity'] ?? '0'));
+                }
+            }
+        }
+
         $totalPhysicalStr = BcMath::add(
             BcMath::add($usableOnHand, $boothCustody),
             $quarantinedRejected
@@ -176,8 +235,8 @@ class StockViewQueryService
             'quarantined_rejected' => (float) $quarantinedRejected,
             'quarantine' => (float) $quarantineOnly,
             'rejected' => (float) $rejectedOnly,
-            'inbound_po' => 0.0,
-            'inbound_open_po' => 0.0,
+            'inbound_po' => (float) $inboundOpenPoStr,
+            'inbound_open_po' => (float) $inboundOpenPoStr,
             'total_physical_balance' => (float) $totalPhysicalStr,
             // Exact bcmath strings for callers needing arbitrary precision
             'usable_on_hand_str' => $usableOnHand,
@@ -187,6 +246,7 @@ class StockViewQueryService
             'blocked_reserved_str' => $blockedReserved,
             'booth_custody_str' => $boothCustody,
             'quarantined_rejected_str' => $quarantinedRejected,
+            'inbound_open_po_str' => $inboundOpenPoStr,
             'total_physical_balance_str' => $totalPhysicalStr,
         ];
     }
@@ -235,8 +295,8 @@ class StockViewQueryService
             ],
             'inbound_open_po' => [
                 'label' => 'Inbound open PO',
-                'quantity' => $format('0'),
-                'value' => 0.0,
+                'quantity' => $format($raw['inbound_open_po_str']),
+                'value' => $raw['inbound_open_po'],
             ],
             'blocked_reserved' => [
                 'label' => 'Blocked reserved (subset of RF-reserved)',
