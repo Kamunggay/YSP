@@ -13,6 +13,7 @@ use App\Services\Authority\ChapterAuthority;
 use App\Services\Inventory\AllocationQueueQueryService;
 use App\Services\Inventory\Participants\NetShortageSnapshotParticipant;
 use App\Services\Shared\BcMath;
+use App\Services\Shared\CanonicalJson;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -176,15 +177,14 @@ final class Stage2InventoryQueryController extends Controller
                 'trigger_filter' => $triggerFilter,
                 'q' => $qPrefix,
             ];
+            $filterHash = substr(CanonicalJson::sha256($normalizedFilters), 0, 32);
 
-            $snapshotHash = hash('sha256', json_encode(
-                array_map(fn ($i) => [
-                    $i['variant_id'],
-                    $i['usable_stockroom_on_hand'],
-                    $i['proposed_uncovered_quantity'],
-                ], $allItems),
-                JSON_THROW_ON_ERROR
-            ));
+            $stableItems = array_map(static function (array $item): array {
+                unset($item['observed_at']);
+
+                return $item;
+            }, $allItems);
+            $snapshotHash = substr(CanonicalJson::sha256($stableItems), 0, 32);
 
             [$offset, $expiresAt] = $this->resolveCursor(
                 $selectors['cursor'] ?? null,
@@ -192,7 +192,8 @@ final class Stage2InventoryQueryController extends Controller
                 $userId,
                 $chapterId,
                 $limit,
-                $normalizedFilters,
+                $filterHash,
+                $authority->version,
                 $snapshotVersion,
                 $snapshotHash
             );
@@ -204,7 +205,8 @@ final class Stage2InventoryQueryController extends Controller
                     $userId,
                     $chapterId,
                     $limit,
-                    $normalizedFilters,
+                    $filterHash,
+                    $authority->version,
                     $snapshotVersion,
                     $snapshotHash,
                     $offset + $limit,
@@ -272,8 +274,14 @@ final class Stage2InventoryQueryController extends Controller
             if ($variantId !== null && ! CatalogueVariant::where('chapter_id', $chapterId)->where('id', $variantId)->sharedLock()->exists()) {
                 throw new ContractException(404, 'resource_not_found', "Catalogue variant {$variantId} was not found.");
             }
-            if ($rfId !== null && ! InternalRf::where('chapter_id', $chapterId)->where('id', $rfId)->sharedLock()->exists()) {
-                throw new ContractException(404, 'resource_not_found', "Internal RF {$rfId} was not found.");
+            if ($rfId !== null) {
+                $filterRf = InternalRf::where('chapter_id', $chapterId)
+                    ->where('id', $rfId)
+                    ->sharedLock()
+                    ->first();
+                if (! $filterRf || ! $this->allocationQueueService->canCallerViewRf($authority, $filterRf)) {
+                    throw new ContractException(404, 'resource_not_found', "Internal RF {$rfId} was not found.");
+                }
             }
 
             try {
@@ -308,10 +316,11 @@ final class Stage2InventoryQueryController extends Controller
                 'requesting_unit_id' => $unitId,
                 'eligible_only' => $eligibleOnly,
             ];
-            $snapshotHash = hash('sha256', json_encode(
-                array_map(fn ($e) => [$e['rf_line_id'], $e['unreserved_outstanding_quantity'], $e['eligible_available_quantity']], $entries),
-                JSON_THROW_ON_ERROR
-            ));
+            $filterHash = substr(CanonicalJson::sha256($normalizedFilters), 0, 32);
+            $snapshotHash = substr(CanonicalJson::sha256([
+                'allocation_policy' => $queue['allocation_policy'],
+                'entries' => $entries,
+            ]), 0, 32);
 
             [$offset, $expiresAt] = $this->resolveCursor(
                 $selectors['cursor'] ?? null,
@@ -319,7 +328,8 @@ final class Stage2InventoryQueryController extends Controller
                 $userId,
                 $chapterId,
                 $limit,
-                $normalizedFilters,
+                $filterHash,
+                $authority->version,
                 $snapshotVersion,
                 $snapshotHash
             );
@@ -331,7 +341,8 @@ final class Stage2InventoryQueryController extends Controller
                     $userId,
                     $chapterId,
                     $limit,
-                    $normalizedFilters,
+                    $filterHash,
+                    $authority->version,
                     $snapshotVersion,
                     $snapshotHash,
                     $offset + $limit,
@@ -423,7 +434,6 @@ final class Stage2InventoryQueryController extends Controller
     }
 
     /**
-     * @param  array<string, mixed>  $filters
      * @return array{0: int, 1: int}
      */
     private function resolveCursor(
@@ -432,7 +442,8 @@ final class Stage2InventoryQueryController extends Controller
         string $userId,
         string $chapterId,
         int $limit,
-        array $filters,
+        string $filterHash,
+        int $authorityVersion,
         int $snapshotVersion,
         string $snapshotHash
     ): array {
@@ -447,47 +458,49 @@ final class Stage2InventoryQueryController extends Controller
         }
 
         if (! is_array($cursor)
-            || ($cursor['kind'] ?? null) !== $kind
-            || ($cursor['user'] ?? null) !== $userId
-            || ($cursor['chapter'] ?? null) !== $chapterId
-            || ($cursor['limit'] ?? null) !== $limit
-            || ($cursor['filters'] ?? null) !== $filters
-            || ! is_int($cursor['offset'] ?? null)
-            || ($cursor['offset'] ?? -1) < 0) {
+            || ($cursor['k'] ?? null) !== $kind
+            || ($cursor['u'] ?? null) !== $userId
+            || ($cursor['c'] ?? null) !== $chapterId
+            || ($cursor['l'] ?? null) !== $limit
+            || ($cursor['f'] ?? null) !== $filterHash
+            || ! is_int($cursor['o'] ?? null)
+            || ($cursor['o'] ?? -1) < 0) {
             throw new ContractException(400, 'invalid_selector', 'Pagination cursor does not match request parameters.');
         }
 
-        if (($cursor['expires'] ?? 0) <= now()->timestamp
-            || ($cursor['snapshot_version'] ?? null) !== $snapshotVersion
-            || ($cursor['snapshot_hash'] ?? null) !== $snapshotHash) {
+        if (($cursor['e'] ?? 0) <= now()->timestamp
+            || ($cursor['av'] ?? null) !== $authorityVersion
+            || ($cursor['sv'] ?? null) !== $snapshotVersion
+            || ($cursor['sh'] ?? null) !== $snapshotHash) {
             throw new ContractException(409, 'snapshot_stale', 'Live inventory snapshot has changed; restart pagination from page 1.');
         }
 
-        return [(int) $cursor['offset'], (int) $cursor['expires']];
+        return [(int) $cursor['o'], (int) $cursor['e']];
     }
 
-    /** @param array<string, mixed> $filters */
     private function encodeCursor(
         string $kind,
         string $userId,
         string $chapterId,
         int $limit,
-        array $filters,
+        string $filterHash,
+        int $authorityVersion,
         int $snapshotVersion,
         string $snapshotHash,
         int $nextOffset,
         int $expiresAt
     ): string {
         return Crypt::encryptString(json_encode([
-            'kind' => $kind,
-            'user' => $userId,
-            'chapter' => $chapterId,
-            'limit' => $limit,
-            'filters' => $filters,
-            'snapshot_version' => $snapshotVersion,
-            'snapshot_hash' => $snapshotHash,
-            'offset' => $nextOffset,
-            'expires' => $expiresAt,
+            'k' => $kind,
+            'u' => $userId,
+            'c' => $chapterId,
+            'l' => $limit,
+            'f' => $filterHash,
+            'av' => $authorityVersion,
+            'sv' => $snapshotVersion,
+            'sh' => $snapshotHash,
+            'o' => $nextOffset,
+            'e' => $expiresAt,
         ], JSON_THROW_ON_ERROR));
     }
 }

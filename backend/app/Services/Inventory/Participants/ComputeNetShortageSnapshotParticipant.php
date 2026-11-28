@@ -208,22 +208,34 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
 
         // Active RF reservations directly (includes reservations linked to RF lines)
         $activeRfResByVariant = [];
+        $unallocatedRfResByVariant = [];
         $activeResRows = StockReservation::where('chapter_id', $chapterId)
             ->where('status', 'ACTIVE')
             ->where('source_type', 'RF')
             ->whereHas('rfLine', fn ($q) => $q->whereIn('variant_id', $allVariantIds))
-            ->with('rfLine')
+            ->with(['rfLine', 'allocations'])
             ->sharedLock()
             ->get();
         foreach ($activeResRows as $res) {
             $vId = (string) $res->rfLine->variant_id;
+            $qty = BcMath::str($res->active_quantity ?? $res->quantity);
             $activeRfResByVariant[$vId] = BcMath::add(
                 $activeRfResByVariant[$vId] ?? '0',
-                BcMath::str($res->active_quantity ?? $res->quantity)
+                $qty
             );
+            $hasActiveAllocs = $res->allocations
+                ->where('status', 'active')
+                ->contains(fn ($a) => BcMath::isPositive(BcMath::sub($a->quantity, BcMath::add($a->consumed_quantity, $a->released_quantity))));
+            if (! $hasActiveAllocs) {
+                $unallocatedRfResByVariant[$vId] = BcMath::add(
+                    $unallocatedRfResByVariant[$vId] ?? '0',
+                    $qty
+                );
+            }
         }
 
-        // Inbound sources from live provider
+        // Inbound sources from live provider (strictly match variant_id AND unit_id)
+        $allVariantsById = $allItemVariants->keyBy('id');
         $inboundRaw = $this->supplyProvider->getInboundSourcesForVariants(
             $chapterId,
             $allVariantIds,
@@ -233,6 +245,10 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
         $inboundByVariant = [];
         foreach ($inboundRaw as $source) {
             $vId = (string) $source['variant_id'];
+            $targetVariant = $allVariantsById->get($vId);
+            if (! $targetVariant || (string) ($source['unit_id'] ?? '') !== (string) $targetVariant->unit_id) {
+                continue;
+            }
             $inboundByVariant[$vId][] = $source;
         }
 
@@ -250,7 +266,8 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
             $variantLots = $lotsByVariant->get($vId, collect());
             $usableOnHand = BcMath::str('0');
             $eligibleUnheldOnHand = BcMath::str('0');
-            $lotFreePools = [];
+            $eligibleFreeFromIntervals = BcMath::str('0');
+            $trackedRanges = [];
 
             foreach ($variantLots as $lot) {
                 $eval = $this->eligibilityEvaluator->evaluateLot($lot, null, $observedAt, $preloaded);
@@ -259,16 +276,39 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
                 }
                 $usableOnHand = BcMath::add($usableOnHand, $eval['usable_stockroom_on_hand']);
                 $eligibleUnheldOnHand = BcMath::add($eligibleUnheldOnHand, $eval['eligible_unheld_quantity']);
-                $lotFreePools[$lot->id] = $lot;
+                $eligibleFreeFromIntervals = BcMath::add($eligibleFreeFromIntervals, $eval['eligible_free_quantity']);
+                foreach ($this->eligibilityEvaluator->extractFreeRangesForLot($lot, $observedAt, $preloaded) as $range) {
+                    $trackedRanges[] = $range;
+                }
             }
 
             $activeRfRes = $activeRfResByVariant[$vId] ?? BcMath::str('0');
-            $eligibleAvail = BcMath::sub($eligibleUnheldOnHand, $activeRfRes);
+            $unallocatedRfRes = $unallocatedRfResByVariant[$vId] ?? BcMath::str('0');
+            $eligibleAvail = BcMath::sub($eligibleFreeFromIntervals, $unallocatedRfRes);
             if (BcMath::comp($eligibleAvail, '0') < 0) {
                 $eligibleAvail = BcMath::str('0');
             }
 
-            // Sort open RF lines for this variant in INV-09 order and match bounded/unrestricted lot supply per RF line
+            // Deduct any legacy unallocated RF reservations before per-RF range matching
+            if (BcMath::isPositive($unallocatedRfRes)) {
+                $remUnalloc = $unallocatedRfRes;
+                foreach ([false, true] as $matchBounded) {
+                    foreach ($trackedRanges as &$range) {
+                        if (! BcMath::isPositive($remUnalloc)) {
+                            break 2;
+                        }
+                        if ($range['is_bounded'] !== $matchBounded || ! BcMath::isPositive($range['remaining'])) {
+                            continue;
+                        }
+                        $take = BcMath::min($remUnalloc, $range['remaining']);
+                        $range['remaining'] = BcMath::sub($range['remaining'], $take);
+                        $remUnalloc = BcMath::sub($remUnalloc, $take);
+                    }
+                    unset($range);
+                }
+            }
+
+            // Sort open RF lines for this variant in INV-09 order and match individual free ranges per RF line
             $openLines = [];
             $totalUnreservedDemand = BcMath::str('0');
             foreach ($rfLinesByVariant->get($vId, collect()) as $rfLine) {
@@ -319,15 +359,6 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
                     <=> [$b['tier_order'], $b['rank'], $b['needed_at'], $b['approved_at'], $b['rf_line_id']];
             });
 
-            // Per-RF matching preserving unit/event-restricted stock separately from general unrestricted stock
-            $lotBoundedRemaining = [];
-            $lotUnrestrictedRemaining = [];
-            foreach ($lotFreePools as $lotId => $lot) {
-                $baseEval = $this->eligibilityEvaluator->evaluateLot($lot, null, $observedAt, $preloaded);
-                $lotBoundedRemaining[$lotId] = $baseEval['eligible_bounded_free_quantity'];
-                $lotUnrestrictedRemaining[$lotId] = $baseEval['eligible_unrestricted_free_quantity'];
-            }
-
             $totalShortageFromMatching = BcMath::str('0');
             $contributingRfLines = [];
 
@@ -335,43 +366,55 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
                 $rf = $entry['rf'];
                 $need = $entry['unreserved_qty'];
 
-                // Consume matching bounded pools first so general unrestricted pools stay available for general demand
-                foreach ($lotFreePools as $lotId => $lot) {
+                // Pass 1: consume matching bounded free ranges first so unrestricted ranges remain for general demand
+                foreach ($trackedRanges as &$range) {
                     if (! BcMath::isPositive($need)) {
                         break;
                     }
-                    $boundedPool = $lotBoundedRemaining[$lotId] ?? '0';
-                    if (! BcMath::isPositive($boundedPool)) {
+                    if (! $range['is_bounded'] || ! BcMath::isPositive($range['remaining'])) {
                         continue;
                     }
-                    $rfEval = $this->eligibilityEvaluator->evaluateLot($lot, $rf, $observedAt, $preloaded);
-                    $usableForRf = $rfEval['eligible_bounded_free_quantity'];
-                    if (! BcMath::isPositive($usableForRf)) {
+                    if (! $this->eligibilityEvaluator->isRestrictionEligibleForRf(
+                        $range['restrictions'],
+                        $rf,
+                        $observedAt,
+                        $range['force_uninterpreted'],
+                        $range['has_legacy_restriction']
+                    )) {
                         continue;
                     }
-                    $avail = BcMath::min($boundedPool, $usableForRf);
-                    $take = BcMath::min($need, $avail);
+                    $take = BcMath::min($need, $range['remaining']);
                     if (BcMath::isPositive($take)) {
-                        $lotBoundedRemaining[$lotId] = BcMath::sub($boundedPool, $take);
+                        $range['remaining'] = BcMath::sub($range['remaining'], $take);
                         $need = BcMath::sub($need, $take);
                     }
                 }
+                unset($range);
 
-                // Consume unrestricted pools
-                foreach ($lotFreePools as $lotId => $lot) {
+                // Pass 2: consume unrestricted free ranges
+                foreach ($trackedRanges as &$range) {
                     if (! BcMath::isPositive($need)) {
                         break;
                     }
-                    $unresPool = $lotUnrestrictedRemaining[$lotId] ?? '0';
-                    if (! BcMath::isPositive($unresPool)) {
+                    if ($range['is_bounded'] || ! BcMath::isPositive($range['remaining'])) {
                         continue;
                     }
-                    $take = BcMath::min($need, $unresPool);
+                    if (! $this->eligibilityEvaluator->isRestrictionEligibleForRf(
+                        $range['restrictions'],
+                        $rf,
+                        $observedAt,
+                        $range['force_uninterpreted'],
+                        $range['has_legacy_restriction']
+                    )) {
+                        continue;
+                    }
+                    $take = BcMath::min($need, $range['remaining']);
                     if (BcMath::isPositive($take)) {
-                        $lotUnrestrictedRemaining[$lotId] = BcMath::sub($unresPool, $take);
+                        $range['remaining'] = BcMath::sub($range['remaining'], $take);
                         $need = BcMath::sub($need, $take);
                     }
                 }
+                unset($range);
 
                 $totalShortageFromMatching = BcMath::add($totalShortageFromMatching, $need);
 
@@ -393,21 +436,20 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
                 }
             }
 
-            $naiveShortage = BcMath::sub($totalUnreservedDemand, $eligibleAvail);
-            if (BcMath::comp($naiveShortage, $totalShortageFromMatching) > 0) {
-                $totalShortageFromMatching = $naiveShortage;
-            }
-
             // Aggregate inbound sources for this variant
             $vInbound = $inboundByVariant[$vId] ?? [];
             usort($vInbound, fn (array $a, array $b): int => [
                 $a['source_kind'],
                 (string) ($a['source_reference'] ?? ''),
                 $a['source_id'],
+                (string) ($a['coverage_state'] ?? ''),
+                (string) ($a['exclusion_reason'] ?? ''),
             ] <=> [
                 $b['source_kind'],
                 (string) ($b['source_reference'] ?? ''),
                 $b['source_id'],
+                (string) ($b['coverage_state'] ?? ''),
+                (string) ($b['exclusion_reason'] ?? ''),
             ]);
 
             $openRepfQty = BcMath::str('0');
@@ -470,6 +512,79 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
             + (int) $activeResRows->sum('version')
         );
 
+        // Compute deterministic item-level (item_id + unit_id) breach & single-allocated ROP top-up across siblings
+        $siblingGroups = [];
+        foreach ($variantSummaries as $vId => $sib) {
+            $sibVar = $sib['variant'];
+            $groupKey = $sibVar->item_id.'|'.$sibVar->unit_id;
+            $siblingGroups[$groupKey][] = $sib;
+        }
+
+        $groupBreach = [];
+        $assignedRopByVariant = [];
+        foreach ($siblingGroups as $groupKey => $siblings) {
+            usort($siblings, fn (array $a, array $b): int => [
+                (string) ($a['variant']->code ?? $a['variant']->sku ?? ''),
+                (string) $a['variant']->id,
+            ] <=> [
+                (string) ($b['variant']->code ?? $b['variant']->sku ?? ''),
+                (string) $b['variant']->id,
+            ]);
+
+            $firstSibVar = $siblings[0]['variant'];
+            $threshold = $thresholdsByItem[(string) $firstSibVar->item_id] ?? null;
+            $approvedRopStr = $threshold['approved_rop'] ?? null;
+            $approvedTargetStr = $threshold['approved_target_level'] ?? null;
+
+            $itemUsableOnHand = BcMath::str('0');
+            $itemEligibleAvail = BcMath::str('0');
+            $itemUnreservedDemand = BcMath::str('0');
+            foreach ($siblings as $sib) {
+                $itemUsableOnHand = BcMath::add($itemUsableOnHand, $sib['usable_stockroom_on_hand']);
+                $itemEligibleAvail = BcMath::add($itemEligibleAvail, $sib['eligible_available_to_allocate']);
+                $itemUnreservedDemand = BcMath::add($itemUnreservedDemand, $sib['total_unreserved_approved_rf_demand']);
+            }
+
+            $lowStockBreach = $approvedRopStr !== null
+                && BcMath::comp($itemUsableOnHand, $approvedRopStr) <= 0;
+            $groupBreach[$groupKey] = $lowStockBreach;
+
+            $remainingItemRop = BcMath::str('0');
+            if ($lowStockBreach && $approvedTargetStr !== null) {
+                $netPostRfPosition = BcMath::sub($itemEligibleAvail, $itemUnreservedDemand);
+                $positivePostRf = BcMath::comp($netPostRfPosition, '0') > 0 ? $netPostRfPosition : BcMath::str('0');
+                $topUp = BcMath::sub($approvedTargetStr, $positivePostRf);
+                if (BcMath::isPositive($topUp)) {
+                    $remainingItemRop = $topUp;
+                }
+            }
+
+            foreach ($siblings as $sib) {
+                $assignedRopByVariant[(string) $sib['variant']->id] = BcMath::str('0');
+            }
+
+            // Pass 1: let siblings with leftover own inbound after covering their own RF shortage absorb ROP top-up once
+            foreach ($siblings as $sib) {
+                if (! BcMath::isPositive($remainingItemRop)) {
+                    break;
+                }
+                $sibId = (string) $sib['variant']->id;
+                $leftoverInbound = BcMath::sub($sib['total_open_inbound_coverage'], $sib['unreserved_approved_rf_shortage']);
+                if (! BcMath::isPositive($leftoverInbound)) {
+                    continue;
+                }
+                $take = BcMath::min($remainingItemRop, $leftoverInbound);
+                $assignedRopByVariant[$sibId] = BcMath::add($assignedRopByVariant[$sibId], $take);
+                $remainingItemRop = BcMath::sub($remainingItemRop, $take);
+            }
+
+            // Pass 2: assign any remaining item-level ROP top-up deterministically once to the primary sibling
+            if (BcMath::isPositive($remainingItemRop)) {
+                $primaryId = (string) $siblings[0]['variant']->id;
+                $assignedRopByVariant[$primaryId] = BcMath::add($assignedRopByVariant[$primaryId], $remainingItemRop);
+            }
+        }
+
         // Build exact ReplenishmentNeedItem payloads for each requested variant
         $items = [];
         foreach ($variantIds as $vId) {
@@ -482,57 +597,21 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
 
             $approvedRopStr = $threshold['approved_rop'];
             $approvedTargetStr = $threshold['approved_target_level'];
+            $groupKey = $variant->item_id.'|'.$variant->unit_id;
 
-            // Multi-variant item ROP/target aggregation across sibling variants sharing the variant's unit_id
-            $itemUsableOnHand = BcMath::str('0');
-            $itemEligibleOnHand = BcMath::str('0');
-            $itemActiveRes = BcMath::str('0');
-            $itemUnreservedDemand = BcMath::str('0');
-            $itemTotalInbound = BcMath::str('0');
-            $siblingCount = 0;
-
-            foreach ($variantSummaries as $sib) {
-                $sibVar = $sib['variant'];
-                if ($sibVar->item_id === $variant->item_id && $sibVar->unit_id === $variant->unit_id) {
-                    $siblingCount++;
-                    $itemUsableOnHand = BcMath::add($itemUsableOnHand, $sib['usable_stockroom_on_hand']);
-                    $itemEligibleOnHand = BcMath::add($itemEligibleOnHand, $sib['eligible_usable_stockroom_on_hand']);
-                    $itemActiveRes = BcMath::add($itemActiveRes, $sib['active_rf_reservations']);
-                    $itemUnreservedDemand = BcMath::add($itemUnreservedDemand, $sib['total_unreserved_approved_rf_demand']);
-                    $itemTotalInbound = BcMath::add($itemTotalInbound, $sib['total_open_inbound_coverage']);
-                }
-            }
-
-            $lowStockBreach = $approvedRopStr !== null
-                && BcMath::comp($itemUsableOnHand, $approvedRopStr) <= 0;
-
+            $lowStockBreach = (bool) ($groupBreach[$groupKey] ?? false);
             $grossRfShortageNeed = $summary['unreserved_approved_rf_shortage'];
-
-            $grossRopNeed = BcMath::str('0');
-            if ($lowStockBreach && $approvedTargetStr !== null) {
-                $netPostRfPosition = BcMath::sub(
-                    $itemEligibleOnHand,
-                    BcMath::add($itemActiveRes, $itemUnreservedDemand)
-                );
-                $positivePostRf = BcMath::comp($netPostRfPosition, '0') > 0 ? $netPostRfPosition : BcMath::str('0');
-                $topUp = BcMath::sub($approvedTargetStr, $positivePostRf);
-                if (BcMath::isPositive($topUp)) {
-                    $grossRopNeed = $topUp;
-                }
-            }
-
+            $grossRopNeed = $assignedRopByVariant[$vId] ?? BcMath::str('0');
             $grossCombinedNeed = BcMath::add($grossRfShortageNeed, $grossRopNeed);
 
-            $effectiveInboundForVariant = $siblingCount > 1
-                ? $itemTotalInbound
-                : $summary['total_open_inbound_coverage'];
+            $ownInbound = $summary['total_open_inbound_coverage'];
 
-            $uncoveredRfShortage = BcMath::sub($grossRfShortageNeed, $effectiveInboundForVariant);
+            $uncoveredRfShortage = BcMath::sub($grossRfShortageNeed, $ownInbound);
             if (BcMath::comp($uncoveredRfShortage, '0') < 0) {
                 $uncoveredRfShortage = BcMath::str('0');
             }
 
-            $inboundLeftAfterRf = BcMath::sub($effectiveInboundForVariant, $grossRfShortageNeed);
+            $inboundLeftAfterRf = BcMath::sub($ownInbound, $grossRfShortageNeed);
             if (BcMath::comp($inboundLeftAfterRf, '0') < 0) {
                 $inboundLeftAfterRf = BcMath::str('0');
             }

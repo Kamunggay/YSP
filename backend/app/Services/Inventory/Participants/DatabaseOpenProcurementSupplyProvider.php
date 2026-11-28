@@ -86,7 +86,7 @@ final class DatabaseOpenProcurementSupplyProvider implements OpenProcurementSupp
                     $reason = 'Expected replenishment date has already passed.';
                 }
 
-                $key = "repf|{$row->variant_id}|{$row->source_id}";
+                $key = "repf|{$row->variant_id}|{$row->unit_id}|{$row->source_id}|{$coverageState}|".($reason ?? '');
                 if (! isset($sources[$key])) {
                     $sources[$key] = [
                         'variant_id' => (string) $row->variant_id,
@@ -101,10 +101,6 @@ final class DatabaseOpenProcurementSupplyProvider implements OpenProcurementSupp
                     ];
                 } else {
                     $sources[$key]['open_quantity'] = BcMath::add($sources[$key]['open_quantity'], $qty);
-                    if ($sources[$key]['coverage_state'] === 'counted' && $coverageState !== 'counted') {
-                        $sources[$key]['coverage_state'] = $coverageState;
-                        $sources[$key]['exclusion_reason'] = $reason;
-                    }
                 }
             }
         }
@@ -165,7 +161,7 @@ final class DatabaseOpenProcurementSupplyProvider implements OpenProcurementSupp
                     $reason = 'Expected supplier delivery date has passed.';
                 }
 
-                $key = "po|{$row->variant_id}|{$row->source_id}";
+                $key = "po|{$row->variant_id}|{$row->unit_id}|{$row->source_id}|{$coverageState}|".($reason ?? '');
                 if (! isset($sources[$key])) {
                     $sources[$key] = [
                         'variant_id' => (string) $row->variant_id,
@@ -180,10 +176,6 @@ final class DatabaseOpenProcurementSupplyProvider implements OpenProcurementSupp
                     ];
                 } else {
                     $sources[$key]['open_quantity'] = BcMath::add($sources[$key]['open_quantity'], $qty);
-                    if ($sources[$key]['coverage_state'] === 'counted' && $coverageState !== 'counted') {
-                        $sources[$key]['coverage_state'] = $coverageState;
-                        $sources[$key]['exclusion_reason'] = $reason;
-                    }
                 }
             }
         }

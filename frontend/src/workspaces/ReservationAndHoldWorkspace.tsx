@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { actionBlockReason, unwrapMutationData } from '../api/access.ts';
 import { apiGet, apiMutate, buildQuery, ContractApiError, formatManilaTime, newActionKey } from '../api/client.ts';
+import { fetchAllAuthorizedPages } from '../api/pagination.ts';
 import type { ChapterAccessSnapshot, ChapterContext } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
 import { SearchableRecordPicker, type SearchablePickerOption } from '../components/SearchableRecordPicker.tsx';
@@ -167,6 +168,39 @@ function sourceKindLabel(kind?: string): string {
   }
 }
 
+interface SavedResHoldDraft {
+  rfId?: string;
+  rfLineId?: string;
+  prepId?: string;
+  reservationId?: string;
+  holdId?: string;
+  opKind?: ResHoldOp;
+  releaseKind?: 'release' | 'cancel_commitment';
+  reasonCode?: string;
+  reason?: string;
+  resolution?: string;
+  overridePolicyId?: string;
+  treatmentSourceId?: string;
+  targets?: StockTargetInput[];
+  ranges?: StockRangeInput[];
+  matchesPaper?: boolean;
+  expectedSnapshotSha?: string;
+}
+
+const RH_FORM_KEY = 'reservation_hold_editor';
+
+function readResHoldDraft(userId: string, chapterId: string): SavedResHoldDraft {
+  const saved = memoryDraftStore.getDraft(userId, chapterId, RH_FORM_KEY);
+  if (!saved) {
+    return {};
+  }
+  try {
+    return JSON.parse(saved.payloadJson) as SavedResHoldDraft;
+  } catch {
+    return {};
+  }
+}
+
 export function ReservationAndHoldWorkspace({
   userId,
   chapterId,
@@ -176,34 +210,8 @@ export function ReservationAndHoldWorkspace({
   onBackToDashboard,
 }: ReservationAndHoldWorkspaceProps) {
   const [viewTab, setViewTab] = useState<'actions' | 'records' | 'status'>('actions');
-  const formKey = 'reservation_hold_editor';
 
-  const readSavedDraft = useCallback(() => {
-    const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
-    if (!saved) {
-      return {};
-    }
-    try {
-      return JSON.parse(saved.payloadJson) as {
-        rfId?: string;
-        rfLineId?: string;
-        prepId?: string;
-        reservationId?: string;
-        holdId?: string;
-        opKind?: ResHoldOp;
-        reasonCode?: string;
-        reason?: string;
-        resolution?: string;
-        overridePolicyId?: string;
-        treatmentSourceId?: string;
-        targets?: StockTargetInput[];
-      };
-    } catch {
-      return {};
-    }
-  }, [userId, chapterId]);
-
-  const initialDraft = readSavedDraft();
+  const initialDraft = readResHoldDraft(userId, chapterId);
   const [rfId, setRfId] = useState(initialDraft.rfId ?? '');
   const [rfLineId, setRfLineId] = useState(initialDraft.rfLineId ?? '');
   const [prepId, setPrepId] = useState(initialDraft.prepId ?? '');
@@ -227,21 +235,26 @@ export function ReservationAndHoldWorkspace({
   const [expectedPrepVersion, setExpectedPrepVersion] = useState('1');
   const [expectedVersion, setExpectedVersion] = useState('1');
   const [expectedMaterialVersion, setExpectedMaterialVersion] = useState('1');
-  const [overridePolicyId] = useState(initialDraft.overridePolicyId ?? '');
-  const [releaseKind, setReleaseKind] = useState<'release' | 'cancel_commitment'>('release');
+  const [overridePolicyId, setOverridePolicyId] = useState(initialDraft.overridePolicyId ?? '');
+  const [releaseKind, setReleaseKind] = useState<'release' | 'cancel_commitment'>(initialDraft.releaseKind ?? 'release');
   const [reasonCode, setReasonCode] = useState(initialDraft.reasonCode ?? 'inspection_hold');
   const [reason, setReason] = useState(initialDraft.reason ?? '');
   const [resolution, setResolution] = useState(initialDraft.resolution ?? '');
-  const [treatmentSourceId] = useState(initialDraft.treatmentSourceId ?? '');
+  const [treatmentSourceId, setTreatmentSourceId] = useState(initialDraft.treatmentSourceId ?? '');
   const [expectedSnapshotMatVer, setExpectedSnapshotMatVer] = useState('1');
-  const [expectedSnapshotSha, setExpectedSnapshotSha] = useState('');
-  const [matchesPaper, setMatchesPaper] = useState(true);
+  const [expectedSnapshotSha, setExpectedSnapshotSha] = useState(initialDraft.expectedSnapshotSha ?? '');
+  const [matchesPaper, setMatchesPaper] = useState(initialDraft.matchesPaper ?? true);
 
-  const [targets, setTargets] = useState<StockTargetInput[]>(initialDraft.targets ?? [emptyStockTarget()]);
-  const [ranges, setRanges] = useState<StockRangeInput[]>([emptyStockRange()]);
+  const [targets, setTargets] = useState<StockTargetInput[]>(
+    initialDraft.targets && initialDraft.targets.length > 0 ? initialDraft.targets : [emptyStockTarget()],
+  );
+  const [ranges, setRanges] = useState<StockRangeInput[]>(
+    initialDraft.ranges && initialDraft.ranges.length > 0 ? initialDraft.ranges : [emptyStockRange()],
+  );
   const [signatories, setSignatories] = useState<SignatoryInput[]>([emptySignatory()]);
   const [evidenceBinding, setEvidenceBinding] = useState(emptyEvidenceBinding);
   const [clearanceFiles, setClearanceFiles] = useState<FileList | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
 
   const [lookupKey, setLookupKey] = useState('');
@@ -252,112 +265,238 @@ export function ReservationAndHoldWorkspace({
   const [error, setError] = useState<unknown>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [replayed, setReplayed] = useState(false);
+
+  const contextRef = useRef({ userId, chapterId, rfId, rfLineId, holdId });
+  useEffect(() => {
+    contextRef.current = { userId, chapterId, rfId, rfLineId, holdId };
+  }, [userId, chapterId, rfId, rfLineId, holdId]);
+  const discoveryGenRef = useRef(0);
   const rfSelectGenRef = useRef(0);
+  const holdSelectGenRef = useRef(0);
+  const uploadGenRef = useRef(0);
   const skipNextAutoSaveRef = useRef(false);
+  const lastChapterKeyRef = useRef(`${userId}::${chapterId}`);
 
   const canReadQueue = (chapterContext?.membership?.duties ?? []).some((d) =>
     ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD'].includes(d),
   );
 
+  // Restore full saved draft cleanly on User/Chapter switch (A -> B -> A)
+  useEffect(() => {
+    const key = `${userId}::${chapterId}`;
+    if (lastChapterKeyRef.current === key) {
+      return;
+    }
+    lastChapterKeyRef.current = key;
+    skipNextAutoSaveRef.current = true;
+    rfSelectGenRef.current += 1;
+    holdSelectGenRef.current += 1;
+    uploadGenRef.current += 1;
+
+    const restored = readResHoldDraft(userId, chapterId);
+    setRfId(restored.rfId ?? '');
+    setRfLineId(restored.rfLineId ?? '');
+    setPrepId(restored.prepId ?? '');
+    setReservationId(restored.reservationId ?? '');
+    setHoldId(restored.holdId ?? '');
+    setOpKind(restored.opKind ?? 'prepare');
+    setOverridePolicyId(restored.overridePolicyId ?? '');
+    setReleaseKind(restored.releaseKind ?? 'release');
+    setReasonCode(restored.reasonCode ?? 'inspection_hold');
+    setReason(restored.reason ?? '');
+    setResolution(restored.resolution ?? '');
+    setTreatmentSourceId(restored.treatmentSourceId ?? '');
+    setExpectedSnapshotSha(restored.expectedSnapshotSha ?? '');
+    setMatchesPaper(restored.matchesPaper ?? true);
+    setTargets(restored.targets && restored.targets.length > 0 ? restored.targets : [emptyStockTarget()]);
+    setRanges(restored.ranges && restored.ranges.length > 0 ? restored.ranges : [emptyStockRange()]);
+
+    setReviewData(null);
+    setReservations([]);
+    setEvidenceBinding(emptyEvidenceBinding());
+    setClearanceFiles(null);
+    setFileInputKey((k) => k + 1);
+    setError(null);
+    setStatusMessage(null);
+  }, [userId, chapterId]);
+
   const loadChapterDiscovery = useCallback(async () => {
+    const targetChapter = chapterId;
+    const gen = ++discoveryGenRef.current;
     setRfListLoading(true);
     setRfListError(null);
     try {
-      const [rfRes, lotsRes, holdsRes] = await Promise.all([
-        apiGet<InternalRfOption[]>(`/api/v1/chapters/${chapterId}/internal-rfs?status=approved&limit=50`),
-        apiGet<StockLotSummary[]>(`/api/v1/chapters/${chapterId}/stock/lots?limit=50`),
-        apiGet<StockHoldRecord[]>(`/api/v1/chapters/${chapterId}/stock-holds?limit=50`),
+      const guard = () =>
+        contextRef.current.chapterId === targetChapter && discoveryGenRef.current === gen;
+      const [allRfs, allLots, allHolds] = await Promise.all([
+        fetchAllAuthorizedPages<InternalRfOption>(
+          `/api/v1/chapters/${targetChapter}/internal-rfs?status=approved`,
+          { shouldContinue: guard },
+        ),
+        fetchAllAuthorizedPages<StockLotSummary>(
+          `/api/v1/chapters/${targetChapter}/stock/lots`,
+          { shouldContinue: guard },
+        ),
+        fetchAllAuthorizedPages<StockHoldRecord>(
+          `/api/v1/chapters/${targetChapter}/stock-holds`,
+          { shouldContinue: guard },
+        ),
       ]);
-      setRfList(rfRes.data);
-      setChapterLots(lotsRes.data);
-      setHolds(holdsRes.data);
+      if (!guard()) {
+        return;
+      }
+      setRfList(allRfs);
+      setChapterLots(allLots);
+      setHolds(allHolds);
+
+      const staleNotices: string[] = [];
+      const curRfId = contextRef.current.rfId.trim();
+      if (curRfId && !allRfs.some((r) => r.id === curRfId)) {
+        rfSelectGenRef.current += 1;
+        setRfId('');
+        setRfLineId('');
+        setPrepId('');
+        setReservationId('');
+        setReviewData(null);
+        setReservations([]);
+        setTargets((prev) => prev.map((t) => ({ ...emptyStockTarget(), quantity: t.quantity })));
+        staleNotices.push('Selected requisition is no longer authorized or active and was cleared.');
+      }
+      const curHoldId = contextRef.current.holdId.trim();
+      if (curHoldId && !allHolds.some((h) => h.id === curHoldId)) {
+        holdSelectGenRef.current += 1;
+        setHoldId('');
+        setEvidenceBinding(emptyEvidenceBinding());
+        setClearanceFiles(null);
+        setFileInputKey((k) => k + 1);
+        staleNotices.push('Selected stock hold is no longer available and was cleared.');
+      }
+
       if (canReadQueue) {
         try {
-          const queueRes = await apiGet<AllocationQueueHint[]>(`/api/v1/chapters/${chapterId}/allocation-queue?limit=50`);
-          setQueueHints(queueRes.data);
+          const allQueue = await fetchAllAuthorizedPages<AllocationQueueHint>(
+            `/api/v1/chapters/${targetChapter}/allocation-queue`,
+            { shouldContinue: guard },
+          );
+          if (guard()) {
+            setQueueHints(allQueue);
+          }
         } catch {
-          setQueueHints([]);
+          if (guard()) {
+            setQueueHints([]);
+          }
         }
       } else {
         setQueueHints([]);
       }
+
+      if (staleNotices.length > 0 && guard()) {
+        setStatusMessage(staleNotices.join(' '));
+      }
     } catch (err) {
-      setRfListError(err instanceof Error ? err.message : 'Unable to load authorized requisitions.');
+      if (contextRef.current.chapterId === targetChapter && discoveryGenRef.current === gen) {
+        setRfListError(err instanceof Error ? err.message : 'Unable to load authorized requisitions.');
+      }
     } finally {
-      setRfListLoading(false);
+      if (contextRef.current.chapterId === targetChapter && discoveryGenRef.current === gen) {
+        setRfListLoading(false);
+      }
     }
   }, [chapterId, canReadQueue]);
 
   useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const [rfRes, lotsRes, holdsRes] = await Promise.all([
-          apiGet<InternalRfOption[]>(`/api/v1/chapters/${chapterId}/internal-rfs?status=approved&limit=50`),
-          apiGet<StockLotSummary[]>(`/api/v1/chapters/${chapterId}/stock/lots?limit=50`),
-          apiGet<StockHoldRecord[]>(`/api/v1/chapters/${chapterId}/stock-holds?limit=50`),
-        ]);
-        if (!active) {
-          return;
-        }
-        setRfList(rfRes.data);
-        setChapterLots(lotsRes.data);
-        setHolds(holdsRes.data);
-        setRfListError(null);
-        if (canReadQueue) {
-          try {
-            const queueRes = await apiGet<AllocationQueueHint[]>(`/api/v1/chapters/${chapterId}/allocation-queue?limit=50`);
-            if (active) {
-              setQueueHints(queueRes.data);
-            }
-          } catch {
-            if (active) {
-              setQueueHints([]);
-            }
-          }
-        }
-      } catch (err) {
-        if (active) {
-          setRfListError(err instanceof Error ? err.message : 'Unable to load authorized requisitions.');
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [chapterId, canReadQueue, refreshSignal]);
+    void loadChapterDiscovery();
+  }, [loadChapterDiscovery, refreshSignal]);
 
   const loadRfAllocations = useCallback(
-    async (explicitRfId?: string) => {
+    async (explicitRfId?: string, opts?: { preserveError?: boolean }) => {
+      const targetChapter = chapterId;
       const targetRf = (explicitRfId ?? rfId).trim();
       if (!targetRf) {
         return;
       }
-      setError(null);
+      const gen = ++rfSelectGenRef.current;
+      const guard = () =>
+        contextRef.current.chapterId === targetChapter &&
+        contextRef.current.rfId.trim() === targetRf &&
+        rfSelectGenRef.current === gen;
+
+      if (!opts?.preserveError) {
+        setError(null);
+      }
       try {
-        const [rev, resv] = await Promise.all([
-          apiGet<AllocationReviewData>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/allocation-review`),
-          apiGet<ReservationRecord[]>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/reservations?limit=50`),
+        const [rev, allResv] = await Promise.all([
+          apiGet<AllocationReviewData>(`/api/v1/chapters/${targetChapter}/internal-rfs/${targetRf}/allocation-review`),
+          fetchAllAuthorizedPages<ReservationRecord>(
+            `/api/v1/chapters/${targetChapter}/internal-rfs/${targetRf}/reservations`,
+            { shouldContinue: guard },
+          ),
         ]);
+        if (!guard()) {
+          return;
+        }
         setReviewData(rev.data);
-        setReservations(resv.data);
+        setReservations(allResv);
         if (rev.data.rf) {
           setExpectedRfVersion(String(rev.data.rf.version));
           setExpectedRfMaterialVersion(String(rev.data.rf.material_version));
           setExpectedRfProgressVersion(String(rev.data.rf.progress_version));
         }
+
         const validLines = rev.data.lines ?? [];
-        setRfLineId((prevLine) => {
-          if (prevLine && validLines.some((l) => l.rf_line_id === prevLine)) {
-            return prevLine;
+        let resolvedLineId = contextRef.current.rfLineId;
+        if (!resolvedLineId || !validLines.some((l) => l.rf_line_id === resolvedLineId)) {
+          resolvedLineId = validLines[0]?.rf_line_id ?? '';
+          setRfLineId(resolvedLineId);
+        }
+
+        // Revalidate target slices against refreshed candidate_lots free intervals while keeping entered quantities
+        const activeLine = validLines.find((l) => l.rf_line_id === resolvedLineId) ?? validLines[0] ?? null;
+        if (activeLine) {
+          const validIntervals = new Map<string, { lotVer: number; stockVer: number }>();
+          for (const lot of activeLine.candidate_lots ?? []) {
+            const intervals = lot.free_intervals && lot.free_intervals.length > 0
+              ? lot.free_intervals
+              : [{ basis_segment_id: lot.basis_segment_id, offset_quantity: '0' }];
+            for (const iv of intervals) {
+              validIntervals.set(`${lot.stock_lot_id}|${iv.basis_segment_id}|${iv.offset_quantity}`, {
+                lotVer: lot.material_version,
+                stockVer: lot.stock_version,
+              });
+            }
           }
-          return validLines[0]?.rf_line_id ?? '';
-        });
+          let clearedTarget = false;
+          setTargets((prev) =>
+            prev.map((row) => {
+              if (!row.stock_lot_id) {
+                return row;
+              }
+              const hit = validIntervals.get(`${row.stock_lot_id}|${row.basis_segment_id}|${row.offset_quantity}`);
+              if (!hit) {
+                clearedTarget = true;
+                return { ...emptyStockTarget(), quantity: row.quantity };
+              }
+              return {
+                ...row,
+                expected_lot_material_version: String(hit.lotVer),
+                expected_stock_version: String(hit.stockVer),
+              };
+            }),
+          );
+          if (clearedTarget) {
+            setStatusMessage(
+              'A previously selected stock batch slice became ineligible or stale and was cleared while keeping your other inputs.',
+            );
+          }
+        }
+
         setReservationId((prevRes) => {
-          const picked = prevRes && resv.data.some((r) => r.id === prevRes) ? resv.data.find((r) => r.id === prevRes)! : resv.data[0];
-          if (picked?.allocations && picked.allocations.length > 0) {
+          const picked = prevRes && allResv.some((r) => r.id === prevRes) ? allResv.find((r) => r.id === prevRes)! : allResv[0];
+          if (picked) {
             setExpectedVersion(String(picked.version));
             setExpectedMaterialVersion(String(picked.material_version));
+          }
+          if (picked?.allocations && picked.allocations.length > 0) {
             setRanges((prevRanges) => {
               if (prevRanges.length === 1 && !prevRanges[0].stock_lot_id) {
                 return picked.allocations!.map((al) => ({
@@ -373,71 +512,30 @@ export function ReservationAndHoldWorkspace({
           return picked?.id ?? '';
         });
       } catch (err) {
+        if (!guard()) {
+          return;
+        }
         setError(err);
+        if (err instanceof ContractApiError && [403, 404].includes(err.status)) {
+          setRfId('');
+          setRfLineId('');
+          setPrepId('');
+          setReservationId('');
+          setReviewData(null);
+          setReservations([]);
+          setTargets((prev) => prev.map((t) => ({ ...emptyStockTarget(), quantity: t.quantity })));
+        }
       }
     },
     [chapterId, rfId],
   );
 
   useEffect(() => {
-    const targetRf = rfId.trim();
-    if (!targetRf) {
+    if (!rfId.trim()) {
       return;
     }
-    let active = true;
-    void (async () => {
-      try {
-        const [rev, resv] = await Promise.all([
-          apiGet<AllocationReviewData>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/allocation-review`),
-          apiGet<ReservationRecord[]>(`/api/v1/chapters/${chapterId}/internal-rfs/${targetRf}/reservations?limit=50`),
-        ]);
-        if (!active) {
-          return;
-        }
-        setReviewData(rev.data);
-        setReservations(resv.data);
-        setError(null);
-        if (rev.data.rf) {
-          setExpectedRfVersion(String(rev.data.rf.version));
-          setExpectedRfMaterialVersion(String(rev.data.rf.material_version));
-          setExpectedRfProgressVersion(String(rev.data.rf.progress_version));
-        }
-        const validLines = rev.data.lines ?? [];
-        setRfLineId((prevLine) => {
-          if (prevLine && validLines.some((l) => l.rf_line_id === prevLine)) {
-            return prevLine;
-          }
-          return validLines[0]?.rf_line_id ?? '';
-        });
-        setReservationId((prevRes) => {
-          const picked = prevRes && resv.data.some((r) => r.id === prevRes) ? resv.data.find((r) => r.id === prevRes)! : resv.data[0];
-          if (picked?.allocations && picked.allocations.length > 0) {
-            setExpectedVersion(String(picked.version));
-            setExpectedMaterialVersion(String(picked.material_version));
-            setRanges((prevRanges) => {
-              if (prevRanges.length === 1 && !prevRanges[0].stock_lot_id) {
-                return picked.allocations!.map((al) => ({
-                  stock_lot_id: al.stock_lot_id,
-                  basis_segment_id: al.basis_segment_id,
-                  offset_quantity: String(al.offset_quantity),
-                  quantity: String(al.quantity),
-                }));
-              }
-              return prevRanges;
-            });
-          }
-          return picked?.id ?? '';
-        });
-      } catch (err) {
-        if (active) {
-          setError(err);
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [chapterId, rfId, refreshSignal]);
+    void loadRfAllocations(rfId);
+  }, [chapterId, rfId, refreshSignal, loadRfAllocations]);
 
   function handleSelectRf(nextRfId: string) {
     if (nextRfId === rfId) {
@@ -455,7 +553,7 @@ export function ReservationAndHoldWorkspace({
     setRanges([emptyStockRange()]);
   }
 
-  // Continuously persist unsaved chapter edits in RAM so switching chapters preserves work automatically
+  // Continuously persist full unsaved chapter edits in RAM so switching chapters (A -> B -> A) preserves work automatically
   useEffect(() => {
     if (skipNextAutoSaveRef.current) {
       skipNextAutoSaveRef.current = false;
@@ -466,14 +564,15 @@ export function ReservationAndHoldWorkspace({
       holdId.trim() !== '' ||
       reason.trim() !== '' ||
       resolution.trim() !== '' ||
-      targets.some((t) => t.stock_lot_id.trim() !== '' || t.quantity !== '1');
+      targets.some((t) => t.stock_lot_id.trim() !== '' || t.quantity !== '1') ||
+      ranges.some((r) => r.stock_lot_id.trim() !== '' || r.quantity !== '1');
     if (!hasUnsaved) {
       return;
     }
     memoryDraftStore.saveDraft({
       userId,
       chapterId,
-      formKey,
+      formKey: RH_FORM_KEY,
       label: `Reservation/Hold (${opKind})`,
       baseVersion: Number.parseInt(expectedVersion, 10) || null,
       pendingActionKey: null,
@@ -484,30 +583,37 @@ export function ReservationAndHoldWorkspace({
         reservationId,
         holdId,
         opKind,
+        releaseKind,
         reasonCode,
         reason,
         resolution,
         overridePolicyId,
         treatmentSourceId,
         targets,
-      }),
+        ranges,
+        matchesPaper,
+        expectedSnapshotSha,
+      } satisfies SavedResHoldDraft),
     });
   }, [
     userId,
     chapterId,
-    formKey,
     rfId,
     rfLineId,
     prepId,
     reservationId,
     holdId,
     opKind,
+    releaseKind,
     reasonCode,
     reason,
     resolution,
     overridePolicyId,
     treatmentSourceId,
     targets,
+    ranges,
+    matchesPaper,
+    expectedSnapshotSha,
     expectedVersion,
   ]);
 
@@ -701,7 +807,7 @@ export function ReservationAndHoldWorkspace({
     memoryDraftStore.saveDraft({
       userId,
       chapterId,
-      formKey,
+      formKey: RH_FORM_KEY,
       label: `Reservation/Hold (${opKind})`,
       baseVersion: Number.parseInt(expectedVersion, 10) || null,
       pendingActionKey: null,
@@ -712,19 +818,27 @@ export function ReservationAndHoldWorkspace({
         reservationId,
         holdId,
         opKind,
+        releaseKind,
         reasonCode,
         reason,
         resolution,
         overridePolicyId,
         treatmentSourceId,
         targets,
-      }),
+        ranges,
+        matchesPaper,
+        expectedSnapshotSha,
+      } satisfies SavedResHoldDraft),
     });
     setStatusMessage('Reservation and hold changes saved as a temporary draft for this session.');
   }
 
   async function handleInlineClearanceUpload() {
-    if (!holdId.trim() || !clearanceFiles || clearanceFiles.length === 0) {
+    const capChapter = chapterId;
+    const capHold = holdId.trim();
+    const capHoldGen = holdSelectGenRef.current;
+    const capUploadGen = ++uploadGenRef.current;
+    if (!capHold || !clearanceFiles || clearanceFiles.length === 0) {
       setError(new Error('Select a stock hold and attach at least one signed clearance scan first.'));
       return;
     }
@@ -733,7 +847,7 @@ export function ReservationAndHoldWorkspace({
     try {
       const fd = new FormData();
       fd.append('purpose', 'hold_clearance');
-      fd.append('record_id', holdId.trim());
+      fd.append('record_id', capHold);
       for (const file of Array.from(clearanceFiles)) {
         fd.append('attachments', file, file.name);
       }
@@ -741,7 +855,16 @@ export function ReservationAndHoldWorkspace({
         evidence_id: string;
         version_id: string;
         attachments: Array<{ attachment_id: string; sha256: string }>;
-      }>('POST', `/api/v1/chapters/${chapterId}/evidence`, fd);
+      }>('POST', `/api/v1/chapters/${capChapter}/evidence`, fd);
+
+      if (
+        contextRef.current.chapterId !== capChapter ||
+        contextRef.current.holdId.trim() !== capHold ||
+        holdSelectGenRef.current !== capHoldGen ||
+        uploadGenRef.current !== capUploadGen
+      ) {
+        return;
+      }
 
       setEvidenceBinding({
         evidence_id: result.data.evidence_id,
@@ -753,16 +876,28 @@ export function ReservationAndHoldWorkspace({
       });
       setStatusMessage(`Signed clearance paper uploaded and linked (${result.data.attachments.length} file).`);
     } catch (err) {
+      if (
+        contextRef.current.chapterId !== capChapter ||
+        contextRef.current.holdId.trim() !== capHold ||
+        holdSelectGenRef.current !== capHoldGen
+      ) {
+        return;
+      }
       setError(err);
       if (err instanceof ContractApiError && [403, 404, 409].includes(err.status)) {
-        // Refresh live authorized choices without wiping unrelated form inputs
         void loadChapterDiscovery();
-        if (rfId.trim()) {
-          void loadRfAllocations(rfId);
+        if (contextRef.current.rfId.trim()) {
+          void loadRfAllocations(contextRef.current.rfId, { preserveError: true });
         }
       }
     } finally {
-      setUploadingEvidence(false);
+      if (
+        contextRef.current.chapterId === capChapter &&
+        contextRef.current.holdId.trim() === capHold &&
+        holdSelectGenRef.current === capHoldGen
+      ) {
+        setUploadingEvidence(false);
+      }
     }
   }
 
@@ -850,7 +985,7 @@ export function ReservationAndHoldWorkspace({
       const { result } = await apiMutate<Record<string, unknown>>(target.method, target.path, buildBody(), key);
       const { record, operationId } = unwrapMutationData<Record<string, unknown>>(result.data);
       skipNextAutoSaveRef.current = true;
-      memoryDraftStore.clearDraft(userId, chapterId, formKey);
+      memoryDraftStore.clearDraft(userId, chapterId, RH_FORM_KEY);
       setReplayed(result.replayed);
       setResultJson(result.data);
       setLookupKey(key);
@@ -906,12 +1041,13 @@ export function ReservationAndHoldWorkspace({
         await loadRfAllocations(rfId);
       }
     } catch (err) {
+      setStatusMessage(null);
       setError(err);
       if (err instanceof ContractApiError && [403, 404, 409].includes(err.status)) {
-        // Refresh live authorized choices without wiping unrelated form inputs
+        // Refresh live authorized choices without wiping unrelated form inputs or the error banner
         void loadChapterDiscovery();
         if (rfId.trim()) {
-          void loadRfAllocations(rfId);
+          void loadRfAllocations(rfId, { preserveError: true });
         }
       }
     } finally {
@@ -1232,6 +1368,12 @@ export function ReservationAndHoldWorkspace({
                     options={holdOptions}
                     emptyMessage="No stock holds recorded in this chapter."
                     onSelect={(opt) => {
+                      holdSelectGenRef.current += 1;
+                      uploadGenRef.current += 1;
+                      setEvidenceBinding(emptyEvidenceBinding());
+                      setClearanceFiles(null);
+                      setFileInputKey((k) => k + 1);
+                      setExpectedSnapshotSha('');
                       if (!opt) {
                         setHoldId('');
                         return;
@@ -1478,6 +1620,7 @@ export function ReservationAndHoldWorkspace({
                     <div className="p04-line-card form-stack">
                       <span className="form-label">Upload Signed Clearance Paper</span>
                       <input
+                        key={fileInputKey}
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png"
                         multiple

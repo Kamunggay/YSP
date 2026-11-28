@@ -61,7 +61,7 @@ class EnforceStageOneAction
             }
         }
 
-        $rfList = $request->route()->getActionMethod() === 'listInternalRfs';
+        $rfList = in_array($request->route()->getActionMethod(), ['listInternalRfs', 'listAllocationQueue'], true);
         $receipt = $request->isMethod('GET') && $request->is('*/internal-rfs/operation-results', '*/internal-rfs/operation-results/*', '*/actual-issue-operations/*', '*/reservation-operations/*', '*/opening-actions/*');
         if (! $rfList && ! $receipt) {
             foreach ($actions as $action) {

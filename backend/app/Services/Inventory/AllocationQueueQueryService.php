@@ -6,6 +6,7 @@ namespace App\Services\Inventory;
 
 use App\Exceptions\ContractException;
 use App\Models\CatalogueVariant;
+use App\Models\InternalRf;
 use App\Models\InternalRfLine;
 use App\Models\InventoryLot;
 use App\Services\Authority\ChapterAuthority;
@@ -69,7 +70,9 @@ final class AllocationQueueQueryService
             $lineQuery->where('variant_id', $filters['variant_id']);
         }
 
-        $rfLines = $lineQuery->get();
+        $rfLines = $lineQuery->get()
+            ->filter(fn (InternalRfLine $line): bool => $line->rf !== null && $this->canCallerViewRf($authority, $line->rf))
+            ->values();
 
         // Load variants cleanly so we can filter by item_id and resolve scales/labels
         $variantIds = $rfLines->pluck('variant_id')->unique()->values()->all();
@@ -288,5 +291,28 @@ final class AllocationQueueQueryService
             'snapshot_version' => $snapshotVersion,
             'entries' => $formatted,
         ];
+    }
+
+    /**
+     * Enforce Stage 1 RF record visibility and requesting-unit duty scope for allocation_queue.read.
+     */
+    public function canCallerViewRf(ChapterAuthority $authority, InternalRf $rf): bool
+    {
+        $unitId = $rf->requesting_unit_id;
+        $isApproved = $rf->approved_at !== null || $rf->status === 'approved';
+
+        foreach (['INVENTORY', 'DISPATCH', 'CHAPTER_HEAD'] as $duty) {
+            if ($isApproved && $authority->allowsDuty($duty, $unitId)) {
+                return true;
+            }
+        }
+
+        if ($rf->status !== 'draft'
+            && $rf->submitted_at !== null
+            && $authority->routedRfApprover($rf) !== null) {
+            return true;
+        }
+
+        return false;
     }
 }

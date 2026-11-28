@@ -663,6 +663,801 @@ class Stage2ABackendQueriesTest extends TestCase
             ->assertJsonPath('error.code', 'duty_denied');
     }
 
+    public function test_allocation_queue_enforces_rf_visibility_and_unit_scope_with_uniform_404(): void
+    {
+        [, $variantId] = $this->seedItemAndVariant('SOAP', 'SOAP-1', 'Bath Soap', 'Bar');
+        $this->seedPolicy('quantity_scale', $variantId, 'CatalogueQuantityPolicyValue', [
+            'unit_id' => $this->unitEachId,
+            'quantity_kind' => 'piece',
+            'quantity_scale' => 0,
+        ]);
+        $this->seedPolicy('allocation_priority', null, 'AllocationPriorityPolicyValue', [
+            'priorities' => [
+                ['requesting_unit_id' => $this->unitAId, 'rank' => 1],
+                ['requesting_unit_id' => $this->unitBId, 'rank' => 2],
+            ],
+            'overrides' => [],
+        ]);
+
+        $this->createLot($variantId, '20', 'unrestricted', [], 'IPC', 'RM-IPC-SOAP');
+        [$rfAId, $rfALineId] = $this->createApprovedRf($this->unitAId, $variantId, '5');
+        [$rfBId] = $this->createApprovedRf($this->unitBId, $variantId, '7');
+
+        // Unit-A-scoped INVENTORY officer
+        $unitAOfficer = (string) Str::uuid();
+        User::create([
+            'id' => $unitAOfficer,
+            'public_id' => 'unita-inv@example.invalid',
+            'name' => 'Unit A Inventory',
+            'email' => 'unita-inv@example.invalid',
+            'password_hash' => hash('sha256', 'Password123!'),
+            'status' => 'active',
+            'version' => 1,
+        ]);
+        ChapterMembership::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $unitAOfficer,
+            'membership_status' => 'active',
+            'version' => 1,
+        ]);
+        DutyGrant::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $unitAOfficer,
+            'duty_code' => 'INVENTORY',
+            'scope' => ['unit_id' => $this->unitAId],
+            'status' => 'active',
+            'is_alternate' => false,
+            'valid_from' => now()->subDay(),
+            'version' => 1,
+        ]);
+
+        // Unfiltered queue must only include Unit A RF, never Unit B
+        $this->asOfficer($unitAOfficer)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/allocation-queue")
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.rf_id', $rfAId)
+            ->assertJsonPath('data.0.rf_line_id', $rfALineId);
+
+        // Explicit rf_id for another unit yields uniform 404 resource_not_found
+        $this->asOfficer($unitAOfficer)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/allocation-queue?rf_id={$rfBId}")
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'resource_not_found');
+
+        // Routed RF_APPROVER for Unit A only must also see Unit A and get 404 for unrouted Unit B
+        $approverId = (string) Str::uuid();
+        User::create([
+            'id' => $approverId,
+            'public_id' => 'approver-a@example.invalid',
+            'name' => 'Approver A',
+            'email' => 'approver-a@example.invalid',
+            'password_hash' => hash('sha256', 'Password123!'),
+            'status' => 'active',
+            'version' => 1,
+        ]);
+        ChapterMembership::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $approverId,
+            'membership_status' => 'active',
+            'version' => 1,
+        ]);
+        $approverGrantId = (string) Str::uuid();
+        DutyGrant::create([
+            'id' => $approverGrantId,
+            'chapter_id' => $this->chapterId,
+            'user_id' => $approverId,
+            'duty_code' => 'RF_APPROVER',
+            'scope' => ['unit_id' => $this->unitAId],
+            'status' => 'active',
+            'is_alternate' => false,
+            'valid_from' => now()->subDay(),
+            'version' => 1,
+        ]);
+        $this->seedPolicy('rf_approval_route', null, 'RfApprovalRoutePolicyValue', [
+            'routes' => [[
+                'requesting_unit_id' => $this->unitAId,
+                'primary_approver_grant_id' => $approverGrantId,
+                'alternate_authorization_ids' => [],
+            ]],
+        ]);
+
+        $this->asOfficer($approverId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/allocation-queue")
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.rf_id', $rfAId);
+
+        $this->asOfficer($approverId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/allocation-queue?rf_id={$rfBId}")
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'resource_not_found');
+    }
+
+    public function test_multi_range_bounded_shortage_matching_and_overlapping_hold_reservation(): void
+    {
+        [, $variantSplitId] = $this->seedItemAndVariant('CAN', 'CAN-S', 'Canned Goods', 'Single');
+        [, $variantOverlapId] = $this->seedItemAndVariant('NOODLE', 'NOODLE-S', 'Noodles', 'Pack');
+        foreach ([$variantSplitId, $variantOverlapId] as $vId) {
+            $this->seedPolicy('quantity_scale', $vId, 'CatalogueQuantityPolicyValue', [
+                'unit_id' => $this->unitEachId,
+                'quantity_kind' => 'piece',
+                'quantity_scale' => 0,
+            ]);
+        }
+        $this->seedPolicy('allocation_priority', null, 'AllocationPriorityPolicyValue', [
+            'priorities' => [
+                ['requesting_unit_id' => $this->unitAId, 'rank' => 1],
+                ['requesting_unit_id' => $this->unitBId, 'rank' => 2],
+            ],
+            'overrides' => [],
+        ]);
+
+        // Lot with 5 restricted to Unit A [0, 5) + 5 restricted to Unit B [5, 10)
+        $splitLotId = (string) Str::uuid();
+        InventoryLot::create([
+            'id' => $splitLotId,
+            'chapter_id' => $this->chapterId,
+            'variant_id' => $variantSplitId,
+            'unit_id' => $this->unitEachId,
+            'location_id' => $this->locationId,
+            'lot_code' => 'LOT-SPLIT',
+            'basis_segment_id' => $splitLotId,
+            'condition' => 'USABLE',
+            'custody' => 'STOCKROOM',
+            'quantity_on_hand' => '10',
+            'original_quantity' => '10',
+            'quantity_scale' => 0,
+            'segments' => [
+                [
+                    'id' => (string) Str::uuid(),
+                    'basis_segment_id' => $splitLotId,
+                    'offset_quantity' => '0',
+                    'quantity' => '5',
+                    'restrictions' => [
+                        'state' => 'bounded',
+                        'allowed_uses' => ['internal_use'],
+                        'event_ids' => [],
+                        'requesting_unit_ids' => [$this->unitAId],
+                        'effective_from' => null,
+                        'effective_until' => null,
+                        'interpretation_id' => (string) Str::uuid(),
+                        'source_condition_reference' => 'SEG-A-ONLY',
+                    ],
+                ],
+                [
+                    'id' => (string) Str::uuid(),
+                    'basis_segment_id' => $splitLotId,
+                    'offset_quantity' => '5',
+                    'quantity' => '5',
+                    'restrictions' => [
+                        'state' => 'bounded',
+                        'allowed_uses' => ['internal_use'],
+                        'event_ids' => [],
+                        'requesting_unit_ids' => [$this->unitBId],
+                        'effective_from' => null,
+                        'effective_until' => null,
+                        'interpretation_id' => (string) Str::uuid(),
+                        'source_condition_reference' => 'SEG-B-ONLY',
+                    ],
+                ],
+            ],
+            'stock_version' => 1,
+            'material_version' => 1,
+            'source_type' => 'DA',
+            'source_id' => (string) Str::uuid(),
+            'source_reference' => 'RM-DA-SPLIT',
+        ]);
+
+        // Two Unit A RFs needing 4 each (total A demand 8 against only 5 A units => shortage 3!)
+        // Plus one Unit B RF needing 5 (covered cleanly by the 5 B units => 0 added shortage)
+        $this->createApprovedRf($this->unitAId, $variantSplitId, '4');
+        $this->createApprovedRf($this->unitAId, $variantSplitId, '4');
+        $this->createApprovedRf($this->unitBId, $variantSplitId, '5');
+
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/replenishment/needs?variant_id={$variantSplitId}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.0.total_unreserved_approved_rf_demand', '13')
+            ->assertJsonPath('data.0.eligible_available_to_allocate', '10')
+            ->assertJsonPath('data.0.unreserved_approved_rf_shortage', '3');
+
+        // Lot with overlapping Hold [0, 4) AND Active RF Reservation [0, 4): union removed is 4 (not 8!), leaving 6 free
+        $overlapLotId = $this->createLot($variantOverlapId, '10', 'unrestricted', [], 'IPC', 'RM-IPC-OVERLAP');
+        $hold = StockHold::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'version' => 1,
+            'reason_code' => 'inspection_hold',
+            'reason' => 'Overlapping hold check',
+            'status' => 'active',
+            'placed_by_user_id' => $this->userId,
+        ]);
+        StockHoldRange::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'hold_id' => $hold->id,
+            'lot_id' => $overlapLotId,
+            'basis_segment_id' => $overlapLotId,
+            'offset_quantity' => 0,
+            'quantity' => 4,
+        ]);
+        [$rfOvId, $rfOvLineId] = $this->createApprovedRf($this->unitAId, $variantOverlapId, '10', '4');
+        $resv = StockReservation::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'source_type' => 'RF',
+            'source_id' => $rfOvId,
+            'source_line_id' => $rfOvLineId,
+            'rf_line_id' => $rfOvLineId,
+            'lot_id' => $overlapLotId,
+            'version' => 1,
+            'material_version' => 1,
+            'quantity' => 4,
+            'committed_quantity' => 4,
+            'active_quantity' => 4,
+            'fulfilled_quantity' => 0,
+            'released_quantity' => 0,
+            'blocked_quantity' => 4,
+            'status' => 'ACTIVE',
+            'state' => 'ACTIVE',
+            'created_by_user_id' => $this->userId,
+        ]);
+        RfReservationAllocation::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'reservation_id' => $resv->id,
+            'lot_id' => $overlapLotId,
+            'basis_segment_id' => $overlapLotId,
+            'offset_quantity' => 0,
+            'quantity' => 4,
+            'consumed_quantity' => 0,
+            'released_quantity' => 0,
+            'status' => 'active',
+        ]);
+
+        // Unreserved demand = 6; free intervals [4, 10) = 6 => eligible_available=6 and shortage MUST BE 0 (never manufactured!)
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/replenishment/needs?variant_id={$variantOverlapId}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.0.usable_stockroom_on_hand', '10')
+            ->assertJsonPath('data.0.eligible_usable_stockroom_on_hand', '6')
+            ->assertJsonPath('data.0.active_rf_reservations', '4')
+            ->assertJsonPath('data.0.eligible_available_to_allocate', '6')
+            ->assertJsonPath('data.0.total_unreserved_approved_rf_demand', '6')
+            ->assertJsonPath('data.0.unreserved_approved_rf_shortage', '0');
+    }
+
+    public function test_sibling_variants_apply_rop_top_up_and_open_supply_once_with_row_consistency(): void
+    {
+        [$itemId, $variant1Id] = $this->seedItemAndVariant('GLOVE', 'GLOVE-M', 'Safety Gloves', 'Medium');
+        $variant2Id = (string) Str::uuid();
+        CatalogueVariant::create([
+            'id' => $variant2Id,
+            'chapter_id' => $this->chapterId,
+            'item_id' => $itemId,
+            'code' => 'GLOVE-L',
+            'sku' => 'GLOVE-L',
+            'name' => 'Safety Gloves / Large',
+            'label' => 'Safety Gloves / Large',
+            'unit_id' => $this->unitEachId,
+            'quantity_scale' => 0,
+            'quantity_identity_locked' => true,
+            'material_version' => 1,
+            'is_active' => true,
+            'state' => 'active',
+        ]);
+        foreach ([$variant1Id, $variant2Id] as $vId) {
+            $this->seedPolicy('quantity_scale', $vId, 'CatalogueQuantityPolicyValue', [
+                'unit_id' => $this->unitEachId,
+                'quantity_kind' => 'piece',
+                'quantity_scale' => 0,
+            ]);
+        }
+        $this->seedPolicy('rop', $itemId, 'CatalogueThresholdPolicyValue', [
+            'unit_id' => $this->unitEachId,
+            'quantity' => '50',
+        ]);
+        $this->seedPolicy('target_level', $itemId, 'CatalogueThresholdPolicyValue', [
+            'unit_id' => $this->unitEachId,
+            'quantity' => '30',
+        ]);
+
+        // Zero stock, both siblings short 5; single PO of 5 strictly on variant2 (plus a mismatched-unit source that must be ignored)
+        $this->createApprovedRf($this->unitAId, $variant1Id, '5');
+        $this->createApprovedRf($this->unitBId, $variant2Id, '5');
+        $this->fakeSupply->sources = [
+            [
+                'variant_id' => $variant2Id,
+                'unit_id' => $this->unitEachId,
+                'source_kind' => 'po',
+                'source_id' => (string) Str::uuid(),
+                'source_reference' => 'CEB-PO-GLOVE-L',
+                'status' => 'issued',
+                'open_quantity' => '5.000000',
+                'coverage_state' => 'counted',
+                'exclusion_reason' => null,
+            ],
+            [
+                'variant_id' => $variant1Id,
+                'unit_id' => (string) Str::uuid(),
+                'source_kind' => 'po',
+                'source_id' => (string) Str::uuid(),
+                'source_reference' => 'CEB-PO-WRONG-UNIT',
+                'status' => 'issued',
+                'open_quantity' => '50.000000',
+                'coverage_state' => 'counted',
+                'exclusion_reason' => null,
+            ],
+        ];
+
+        $resp = $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/replenishment/needs?item_id={$itemId}")
+            ->assertStatus(200)
+            ->assertJsonCount(2, 'data');
+
+        $rows = collect($resp->json('data'))->keyBy('variant_id');
+        $r1 = $rows[$variant1Id];
+        $r2 = $rows[$variant2Id];
+
+        // Open supply attributed strictly to matching variant & unit, applied to RF shortage first
+        $this->assertSame('0', $r1['total_open_inbound_coverage']);
+        $this->assertSame('5', $r1['gross_rf_shortage_need']);
+        $this->assertSame('5', $r1['uncovered_rf_shortage_quantity']);
+
+        $this->assertSame('5', $r2['total_open_inbound_coverage']);
+        $this->assertSame('5', $r2['gross_rf_shortage_need']);
+        $this->assertSame('0', $r2['uncovered_rf_shortage_quantity']);
+
+        // Shared item ROP top-up of 30 assigned ONCE across siblings (never 60!), and row math strictly consistent
+        $this->assertSame(30, (int) $r1['gross_rop_replenishment_need'] + (int) $r2['gross_rop_replenishment_need']);
+        foreach ([$r1, $r2] as $row) {
+            $this->assertSame(
+                (int) $row['gross_rf_shortage_need'] + (int) $row['gross_rop_replenishment_need'],
+                (int) $row['gross_combined_need']
+            );
+            $this->assertSame(
+                (int) $row['uncovered_rf_shortage_quantity'] + (int) $row['uncovered_rop_replenishment_quantity'],
+                (int) $row['proposed_uncovered_quantity']
+            );
+        }
+    }
+
+    public function test_lot_eligibility_honors_explicit_intended_use_and_rejects_incompatible_rf_context(): void
+    {
+        [, $variantId] = $this->seedItemAndVariant('BLANKET', 'BLK-1', 'Wool Blanket', 'Single');
+        $this->seedPolicy('quantity_scale', $variantId, 'CatalogueQuantityPolicyValue', [
+            'unit_id' => $this->unitEachId,
+            'quantity_kind' => 'piece',
+            'quantity_scale' => 0,
+        ]);
+
+        $internalOnlyLotId = $this->createLot($variantId, '8', 'bounded', [
+            'allowed_uses' => ['internal_use'],
+            'requesting_unit_ids' => [$this->unitAId],
+        ], 'DA', 'RM-DA-INT');
+        $unrestrictedLotId = $this->createLot($variantId, '6', 'unrestricted', [], 'IPC', 'RM-IPC-GEN');
+        [$rfAId] = $this->createApprovedRf($this->unitAId, $variantId, '4');
+
+        // Permitted RF internal use => eligible true, internal_use_eligible true, sale_eligible false
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/stock/lots/{$internalOnlyLotId}/eligibility?intended_use=internal_use&rf_id={$rfAId}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.eligible', true)
+            ->assertJsonPath('data.internal_use_eligible', true)
+            ->assertJsonPath('data.sale_eligible', false);
+
+        // Sale query + internal_use RF context => primary eligible MUST BE false (no RF purpose substitution!)
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/stock/lots/{$internalOnlyLotId}/eligibility?intended_use=sale&rf_id={$rfAId}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.eligible', false)
+            ->assertJsonPath('data.internal_use_eligible', true)
+            ->assertJsonPath('data.sale_eligible', false);
+
+        // Unrestricted same-SKU lot: sale without RF is eligible, sale with internal-use RF is incompatible
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/stock/lots/{$unrestrictedLotId}/eligibility?intended_use=sale")
+            ->assertStatus(200)
+            ->assertJsonPath('data.eligible', true)
+            ->assertJsonPath('data.sale_eligible', true);
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/stock/lots/{$unrestrictedLotId}/eligibility?intended_use=sale&rf_id={$rfAId}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.eligible', false)
+            ->assertJsonPath('data.sale_eligible', true);
+    }
+
+    public function test_compact_cursors_max_length_search_authority_version_and_full_snapshot_staleness(): void
+    {
+        $maxLabel = str_repeat('Á', 80);
+        [$itemId, $v1Id] = $this->seedItemAndVariant('MAXLEN', 'MAX-1', $maxLabel, 'One');
+        $v2Id = (string) Str::uuid();
+        CatalogueVariant::create([
+            'id' => $v2Id,
+            'chapter_id' => $this->chapterId,
+            'item_id' => $itemId,
+            'code' => 'MAX-2',
+            'sku' => 'MAX-2',
+            'name' => $maxLabel,
+            'label' => $maxLabel,
+            'unit_id' => $this->unitEachId,
+            'quantity_scale' => 0,
+            'quantity_identity_locked' => true,
+            'material_version' => 1,
+            'is_active' => true,
+            'state' => 'active',
+        ]);
+        foreach ([$v1Id, $v2Id] as $vId) {
+            $this->seedPolicy('quantity_scale', $vId, 'CatalogueQuantityPolicyValue', [
+                'unit_id' => $this->unitEachId,
+                'quantity_kind' => 'piece',
+                'quantity_scale' => 0,
+            ]);
+        }
+        $this->seedPolicy('allocation_priority', null, 'AllocationPriorityPolicyValue', [
+            'priorities' => [['requesting_unit_id' => $this->unitAId, 'rank' => 1]],
+            'overrides' => [],
+        ]);
+
+        $lot1Id = $this->createLot($v1Id, '10', 'unrestricted', [], 'IPC', 'RM-MAX-1');
+        $this->createApprovedRf($this->unitAId, $v1Id, '4');
+        $this->createApprovedRf($this->unitAId, $v2Id, '3');
+
+        // 1. Maximum-length 80-char UTF-8 search + UUID filters produces usable cursor <= 1024 chars
+        $qParam = rawurlencode($maxLabel);
+        $repPage1 = $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/replenishment/needs?q={$qParam}&item_id={$itemId}&trigger_filter=all&limit=1")
+            ->assertStatus(200);
+        $repCursor = (string) $repPage1->json('page.next_cursor');
+        $this->assertNotSame('', $repCursor);
+        $this->assertLessThanOrEqual(1024, strlen($repCursor));
+
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/replenishment/needs?q={$qParam}&item_id={$itemId}&trigger_filter=all&limit=1&cursor=".urlencode($repCursor))
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data');
+
+        // 2. Adding excluded inbound leaves headline quantity unchanged but mutates full snapshot => 409 snapshot_stale
+        $this->fakeSupply->sources = [[
+            'variant_id' => $v1Id,
+            'unit_id' => $this->unitEachId,
+            'source_kind' => 'po',
+            'source_id' => (string) Str::uuid(),
+            'source_reference' => 'CEB-PO-EXCL-99',
+            'status' => 'partially_received',
+            'open_quantity' => '12.000000',
+            'coverage_state' => 'disputed',
+            'exclusion_reason' => 'Disputed delivery quantity',
+        ]];
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/replenishment/needs?q={$qParam}&item_id={$itemId}&trigger_filter=all&limit=1&cursor=".urlencode($repCursor))
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'snapshot_stale');
+        $this->fakeSupply->sources = [];
+
+        // Refresh cursor and verify authority version change (while access stays granted) returns 409 snapshot_stale
+        $repCursor2 = (string) $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/replenishment/needs?q={$qParam}&item_id={$itemId}&limit=1")
+            ->json('page.next_cursor');
+        $queueCursor = (string) $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/allocation-queue?item_id={$itemId}&limit=1")
+            ->json('page.next_cursor');
+
+        // Eligibility state change on lot leaving headline free quantity ('10') unchanged => allocation-queue 409 snapshot_stale
+        InventoryLot::whereKey($lot1Id)->update([
+            'segments' => [[
+                'id' => $lot1Id,
+                'basis_segment_id' => $lot1Id,
+                'offset_quantity' => '0',
+                'quantity' => '10',
+                'restrictions' => [
+                    'state' => 'bounded',
+                    'allowed_uses' => ['internal_use'],
+                    'event_ids' => [],
+                    'requesting_unit_ids' => [$this->unitAId],
+                    'effective_from' => null,
+                    'effective_until' => null,
+                    'interpretation_id' => (string) Str::uuid(),
+                    'source_condition_reference' => 'NEWLY-BOUNDED',
+                ],
+            ]],
+        ]);
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/allocation-queue?item_id={$itemId}&limit=1&cursor=".urlencode($queueCursor))
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'snapshot_stale');
+
+        // Authority version bump while caller still retains INVENTORY access => 409 snapshot_stale on both endpoints
+        DutyGrant::where('chapter_id', $this->chapterId)
+            ->where('user_id', $this->userId)
+            ->where('duty_code', 'INVENTORY')
+            ->increment('version');
+
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/replenishment/needs?q={$qParam}&item_id={$itemId}&limit=1&cursor=".urlencode($repCursor2))
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'snapshot_stale');
+    }
+
+    public function test_connected_po_before_receipt_partial_rm_repf_to_po_bounded_reserve_and_rejections(): void
+    {
+        [$itemId, $variantId] = $this->seedItemAndVariant('HYG', 'HYG-KIT', 'Hygiene Kit', 'Box');
+        $this->seedPolicy('quantity_scale', $variantId, 'CatalogueQuantityPolicyValue', [
+            'unit_id' => $this->unitEachId,
+            'quantity_kind' => 'piece',
+            'quantity_scale' => 0,
+        ]);
+        $this->seedPolicy('rop', $itemId, 'CatalogueThresholdPolicyValue', [
+            'unit_id' => $this->unitEachId,
+            'quantity' => '50',
+        ]);
+        $this->seedPolicy('target_level', $itemId, 'CatalogueThresholdPolicyValue', [
+            'unit_id' => $this->unitEachId,
+            'quantity' => '100',
+        ]);
+        $this->seedPolicy('allocation_priority', null, 'AllocationPriorityPolicyValue', [
+            'priorities' => [
+                ['requesting_unit_id' => $this->unitAId, 'rank' => 1],
+                ['requesting_unit_id' => $this->unitBId, 'rank' => 2],
+            ],
+            'overrides' => [],
+        ]);
+
+        // 1. Issued PO of 100 BEFORE any physical lot exists
+        $poId = (string) Str::uuid();
+        $this->fakeSupply->sources = [[
+            'variant_id' => $variantId,
+            'unit_id' => $this->unitEachId,
+            'source_kind' => 'po',
+            'source_id' => $poId,
+            'source_reference' => 'CEB-PO-2026-0100',
+            'status' => 'issued',
+            'open_quantity' => '100.000000',
+            'coverage_state' => 'counted',
+            'exclusion_reason' => null,
+        ]];
+
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/stock/variants/{$variantId}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.views.usable_stockroom_on_hand.quantity', '0')
+            ->assertJsonPath('data.views.inbound_open_po.quantity', '100');
+
+        // 2. Partial RM accepts 40 usable (bounded to Unit A) + 10 rejected => 60 remains open inbound
+        $acceptedLotId = $this->createLot($variantId, '40', 'bounded', [
+            'allowed_uses' => ['internal_use'],
+            'requesting_unit_ids' => [$this->unitAId],
+        ], 'PO_DR', 'RM-PO-40');
+        $rejectedLotId = (string) Str::uuid();
+        InventoryLot::create([
+            'id' => $rejectedLotId,
+            'chapter_id' => $this->chapterId,
+            'variant_id' => $variantId,
+            'unit_id' => $this->unitEachId,
+            'location_id' => $this->locationId,
+            'lot_code' => 'LOT-REJ-10',
+            'basis_segment_id' => $rejectedLotId,
+            'condition' => 'REJECTED',
+            'custody' => 'STOCKROOM',
+            'quantity_on_hand' => '10',
+            'original_quantity' => '10',
+            'quantity_scale' => 0,
+            'segments' => [['id' => $rejectedLotId, 'basis_segment_id' => $rejectedLotId, 'offset_quantity' => '0', 'quantity' => '10', 'restrictions' => null]],
+            'stock_version' => 1,
+            'material_version' => 1,
+            'source_type' => 'PO_DR',
+            'source_id' => (string) Str::uuid(),
+            'source_reference' => 'RM-PO-REJ-10',
+        ]);
+        $this->fakeSupply->sources[0]['status'] = 'partially_received';
+        $this->fakeSupply->sources[0]['open_quantity'] = '60.000000';
+
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/stock/variants/{$variantId}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.views.usable_stockroom_on_hand.quantity', '40')
+            ->assertJsonPath('data.views.quarantined_rejected.quantity', '10')
+            ->assertJsonPath('data.views.inbound_open_po.quantity', '60');
+        $this->asOfficer($this->userId)
+            ->getJson("/api/v1/chapters/{$this->chapterId}/stock/lots/{$rejectedLotId}/eligibility")
+            ->assertStatus(200)
+            ->assertJsonPath('data.eligible', false);
+
+        // 3. RepF exclusion & RepF->PO transition deduct coverage once (50 total when RepF orders into PO)
+        $repfId = (string) Str::uuid();
+        $this->fakeSupply->sources = [[
+            'variant_id' => $variantId,
+            'unit_id' => $this->unitEachId,
+            'source_kind' => 'repf',
+            'source_id' => $repfId,
+            'source_reference' => 'CEB-REPF-0050',
+            'status' => 'approved',
+            'open_quantity' => '50.000000',
+            'coverage_state' => 'counted',
+            'exclusion_reason' => null,
+        ]];
+        /** @var NetShortageSnapshotParticipant $participant */
+        $participant = $this->app->make(NetShortageSnapshotParticipant::class);
+        $withExclude = $participant->computeNetShortageSnapshot([
+            'chapter_id' => $this->chapterId,
+            'actor_id' => $this->userId,
+            'observed_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
+            'variant_ids' => [$variantId],
+            'include_rf_line_breakdown' => false,
+            'require_rop_and_target_policies' => true,
+            'exclude_repf_id' => $repfId,
+        ]);
+        $this->assertSame('0', $withExclude['items'][0]['total_open_inbound_coverage']);
+
+        // Transition RepF -> PO (RepF open_quantity becomes 0, PO open_quantity is 50)
+        $this->fakeSupply->sources = [[
+            'variant_id' => $variantId,
+            'unit_id' => $this->unitEachId,
+            'source_kind' => 'po',
+            'source_id' => $poId,
+            'source_reference' => 'CEB-PO-FROM-REPF',
+            'status' => 'issued',
+            'open_quantity' => '50.000000',
+            'coverage_state' => 'counted',
+            'exclusion_reason' => null,
+        ]];
+        $afterTransition = $participant->computeNetShortageSnapshot([
+            'chapter_id' => $this->chapterId,
+            'actor_id' => $this->userId,
+            'observed_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
+            'variant_ids' => [$variantId],
+            'include_rf_line_breakdown' => false,
+            'require_rop_and_target_policies' => true,
+            'exclude_repf_id' => null,
+        ]);
+        $this->assertSame('50', $afterTransition['items'][0]['open_po_inbound_quantity']);
+        $this->assertSame('50', $afterTransition['items'][0]['total_open_inbound_coverage']);
+        $this->assertSame('10', $afterTransition['items'][0]['proposed_uncovered_quantity']);
+
+        // 4. Permitted bounded lot reserve commit + rejected references without committing
+        [$rfAId, $rfALineId] = $this->createApprovedRf($this->unitAId, $variantId, '10');
+        [$rfBId, $rfBLineId] = $this->createApprovedRf($this->unitBId, $variantId, '5');
+
+        $prepPermitted = $this->asOfficer($this->userId)
+            ->withHeader('X-Action-Key', (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfAId}/reservation-preparations", [
+                'expected_rf_version' => 1,
+                'expected_rf_material_version' => 1,
+                'expected_rf_progress_version' => 1,
+                'rf_line_id' => $rfALineId,
+                'targets' => [[
+                    'stock_lot_id' => $acceptedLotId,
+                    'basis_segment_id' => $acceptedLotId,
+                    'offset_quantity' => '0',
+                    'quantity' => '4',
+                    'expected_lot_material_version' => 1,
+                    'expected_stock_version' => 1,
+                ]],
+            ])
+            ->assertStatus(201);
+        $this->asOfficer($this->userId)
+            ->withHeader('X-Action-Key', (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfAId}/reservation-preparations/{$prepPermitted->json('data.resource_id')}/commit", [
+                'expected_rf_version' => 1,
+                'expected_rf_material_version' => 1,
+                'expected_rf_progress_version' => 1,
+                'expected_preparation_version' => 1,
+            ])
+            ->assertStatus(201);
+        $this->assertSame(1, StockReservation::where('chapter_id', $this->chapterId)->where('source_id', $rfAId)->count());
+
+        // Blocked hold range [10, 20) on accepted lot -> prepare/commit must reject without creating reservation
+        $hold = StockHold::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'version' => 1,
+            'reason_code' => 'damage_inspection',
+            'reason' => 'Damaged interval',
+            'status' => 'active',
+            'placed_by_user_id' => $this->userId,
+        ]);
+        StockHoldRange::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'hold_id' => $hold->id,
+            'lot_id' => $acceptedLotId,
+            'basis_segment_id' => $acceptedLotId,
+            'offset_quantity' => 10,
+            'quantity' => 10,
+        ]);
+        $freshRfA = InternalRf::findOrFail($rfAId);
+        $freshLot = InventoryLot::findOrFail($acceptedLotId);
+        $resBeforeFail = StockReservation::where('chapter_id', $this->chapterId)->count();
+        $prepHeld = $this->asOfficer($this->userId)
+            ->withHeader('X-Action-Key', (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfAId}/reservation-preparations", [
+                'expected_rf_version' => (int) $freshRfA->version,
+                'expected_rf_material_version' => (int) $freshRfA->material_version,
+                'expected_rf_progress_version' => (int) $freshRfA->progress_version,
+                'rf_line_id' => $rfALineId,
+                'targets' => [[
+                    'stock_lot_id' => $acceptedLotId,
+                    'basis_segment_id' => $acceptedLotId,
+                    'offset_quantity' => '10',
+                    'quantity' => '4',
+                    'expected_lot_material_version' => (int) $freshLot->material_version,
+                    'expected_stock_version' => (int) $freshLot->stock_version,
+                ]],
+            ])
+            ->assertStatus(201);
+        $this->asOfficer($this->userId)
+            ->withHeader('X-Action-Key', (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfAId}/reservation-preparations/{$prepHeld->json('data.resource_id')}/commit", [
+                'expected_rf_version' => (int) $freshRfA->version,
+                'expected_rf_material_version' => (int) $freshRfA->material_version,
+                'expected_rf_progress_version' => (int) $freshRfA->progress_version,
+                'expected_preparation_version' => 1,
+            ])
+            ->assertStatus(409);
+
+        // Wrong-parent rf_line_id (rfBLineId under rfAId) -> rejected cleanly
+        $this->asOfficer($this->userId)
+            ->withHeader('X-Action-Key', (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfAId}/reservation-preparations", [
+                'expected_rf_version' => (int) $freshRfA->version,
+                'expected_rf_material_version' => (int) $freshRfA->material_version,
+                'expected_rf_progress_version' => (int) $freshRfA->progress_version,
+                'rf_line_id' => $rfBLineId,
+                'targets' => [[
+                    'stock_lot_id' => $acceptedLotId,
+                    'basis_segment_id' => $acceptedLotId,
+                    'offset_quantity' => '4',
+                    'quantity' => '2',
+                    'expected_lot_material_version' => (int) $freshLot->material_version,
+                    'expected_stock_version' => (int) $freshLot->stock_version,
+                ]],
+            ])
+            ->assertStatus(404);
+
+        // Unauthorized non-inventory officer -> 403 without committing
+        $viewerId = (string) Str::uuid();
+        User::create([
+            'id' => $viewerId,
+            'public_id' => 'viewer2a@example.invalid',
+            'name' => 'Viewer',
+            'email' => 'viewer2a@example.invalid',
+            'password_hash' => hash('sha256', 'Password123!'),
+            'status' => 'active',
+            'version' => 1,
+        ]);
+        ChapterMembership::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $viewerId,
+            'membership_status' => 'active',
+            'version' => 1,
+        ]);
+        $this->asOfficer($viewerId)
+            ->withHeader('X-Action-Key', (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfAId}/reservation-preparations", [
+                'expected_rf_version' => (int) $freshRfA->version,
+                'expected_rf_material_version' => (int) $freshRfA->material_version,
+                'expected_rf_progress_version' => (int) $freshRfA->progress_version,
+                'rf_line_id' => $rfALineId,
+                'targets' => [[
+                    'stock_lot_id' => $acceptedLotId,
+                    'basis_segment_id' => $acceptedLotId,
+                    'offset_quantity' => '4',
+                    'quantity' => '2',
+                    'expected_lot_material_version' => (int) $freshLot->material_version,
+                    'expected_stock_version' => (int) $freshLot->stock_version,
+                ]],
+            ])
+            ->assertStatus(403);
+
+        $this->assertSame($resBeforeFail, StockReservation::where('chapter_id', $this->chapterId)->count());
+        $this->assertNotNull($rfBId);
+    }
+
     /** @return array{0: string, 1: string} */
     private function seedItemAndVariant(string $itemCode, string $variantCode, string $itemName, string $variantLabel): array
     {
@@ -855,7 +1650,8 @@ class Stage2ABackendQueriesTest extends TestCase
         $session = new BrowserSession([
             'user_id' => $id,
             'user_version' => User::findOrFail($id)->version,
-            'authentication_method' => 'password',
+            'authentication_method' => 'totp',
+            'next_step' => null,
             'authenticated_at' => now(),
             'expires_at' => now()->addHour(),
         ]);

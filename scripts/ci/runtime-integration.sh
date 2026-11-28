@@ -87,6 +87,7 @@ echo 'Repeat migration preserved schema and migration state.'
   tests/Feature/Stage1A/OpeningDraftAndCountTest.php \
   tests/Feature/Stage1A/SalesOrderIntakeTest.php \
   tests/Feature/Stage1B \
+  tests/Feature/Stage2 \
   tests/Feature/Stage3
 
 # Run real InnoDB LOCK WAIT opening-baseline concurrency verification with root observer privileges.

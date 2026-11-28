@@ -341,6 +341,128 @@ final class StockEligibilityEvaluator
         ];
     }
 
+    /**
+     * Extract remaining free intervals per segment on a usable stockroom lot (after removing
+     * consumed intervals and the union of active holds and active reservations), preserving
+     * segment restriction metadata so callers can decrement individual ranges cleanly per RF.
+     *
+     * @param  array<string, mixed>  $preloaded
+     * @return list<array{
+     *   lot_id: string,
+     *   offset: string,
+     *   remaining: string,
+     *   is_bounded: bool,
+     *   restrictions: mixed,
+     *   force_uninterpreted: bool,
+     *   has_legacy_restriction: bool
+     * }>
+     */
+    public function extractFreeRangesForLot(
+        InventoryLot $lot,
+        ?CarbonImmutable $observedAt = null,
+        array $preloaded = [],
+        string $intendedUse = 'internal_use',
+    ): array {
+        if (strtoupper((string) $lot->condition) !== 'USABLE' || strtoupper((string) $lot->custody) !== 'STOCKROOM') {
+            return [];
+        }
+
+        $now = ($observedAt ?? CarbonImmutable::now('UTC'))->utc();
+        $consumedData = $preloaded['consumed_by_lot'][$lot->id]
+            ?? $this->stockViewQuery->getConsumedIntervalsForLot($lot);
+        $consumedIntervals = $consumedData['consumed_intervals'];
+        $holdIntervals = $preloaded['holds_by_lot'][$lot->id]
+            ?? $this->stockViewQuery->getActiveHoldRangesForLot($lot->chapter_id, $lot->id);
+        $reservationIntervals = $preloaded['reservations_by_lot'][$lot->id]
+            ?? $this->stockViewQuery->getActiveReservationRangesForLot($lot->chapter_id, $lot->id);
+
+        $hasLegacyLotRestriction = isset($preloaded['lot_restriction_ids'])
+            ? (bool) ($preloaded['lot_restriction_ids'][$lot->id] ?? false)
+            : LotRestrictionAssignment::where('lot_id', $lot->id)->exists();
+
+        $immediatelyAllocatable = $lot->getAttribute('immediately_allocatable');
+        $forceUninterpreted = $immediatelyAllocatable === false || $immediatelyAllocatable === 0 || $immediatelyAllocatable === '0';
+
+        $segments = is_array($lot->segments) && $lot->segments !== []
+            ? $lot->segments
+            : [[
+                'offset_quantity' => '0',
+                'quantity' => $consumedData['basis_total'],
+                'restrictions' => null,
+            ]];
+
+        $ranges = [];
+        foreach ($segments as $segment) {
+            if (! is_array($segment)) {
+                continue;
+            }
+            $segOffset = BcMath::str($segment['offset_quantity'] ?? '0');
+            $segQty = BcMath::str($segment['quantity'] ?? '0');
+            if (! BcMath::isPositive($segQty)) {
+                continue;
+            }
+
+            $eval = $this->classifyRestriction(
+                $segment['restrictions'] ?? null,
+                null,
+                $now,
+                $forceUninterpreted,
+                $hasLegacyLotRestriction,
+                $intendedUse
+            );
+            if ($eval['status'] === 'uninterpreted' || $eval['status'] === 'ineligible_bounded') {
+                continue;
+            }
+
+            $onHandIntervals = $this->subtractIntervals([['offset' => $segOffset, 'quantity' => $segQty]], $consumedIntervals);
+            if ($onHandIntervals === []) {
+                continue;
+            }
+            $unheldIntervals = $this->subtractIntervals($onHandIntervals, $holdIntervals);
+            $freeIntervals = $this->subtractIntervals($unheldIntervals, $reservationIntervals);
+
+            foreach ($freeIntervals as $interval) {
+                if (! BcMath::isPositive($interval['quantity'])) {
+                    continue;
+                }
+                $ranges[] = [
+                    'lot_id' => $lot->id,
+                    'offset' => $interval['offset'],
+                    'remaining' => $interval['quantity'],
+                    'is_bounded' => $eval['status'] === 'eligible_bounded',
+                    'restrictions' => $segment['restrictions'] ?? null,
+                    'force_uninterpreted' => $forceUninterpreted,
+                    'has_legacy_restriction' => $hasLegacyLotRestriction,
+                ];
+            }
+        }
+
+        return $ranges;
+    }
+
+    /**
+     * Check whether a specific segment's restriction metadata permits $targetRf.
+     */
+    public function isRestrictionEligibleForRf(
+        mixed $restrictions,
+        InternalRf $targetRf,
+        CarbonImmutable $observedAt,
+        bool $forceUninterpreted,
+        bool $hasLegacyLotRestriction,
+        string $intendedUse = 'internal_use',
+    ): bool {
+        $eval = $this->classifyRestriction(
+            $restrictions,
+            $targetRf,
+            $observedAt,
+            $forceUninterpreted,
+            $hasLegacyLotRestriction,
+            $intendedUse
+        );
+
+        return in_array($eval['status'], ['eligible_unrestricted', 'eligible_bounded'], true);
+    }
+
     public static function mapSourceKind(?string $sourceType): string
     {
         $key = strtoupper(trim((string) $sourceType));
@@ -359,8 +481,17 @@ final class StockEligibilityEvaluator
         bool $hasLegacyLotRestriction,
         string $intendedUse = 'internal_use',
     ): array {
+        $requestedUse = strtolower($intendedUse);
+
         if ($forceUninterpreted) {
             return ['status' => 'uninterpreted', 'reason' => 'Donor restriction requires interpretation before allocation.'];
+        }
+
+        if ($targetRf !== null) {
+            $rfPurpose = strtolower((string) ($targetRf->purpose ?: 'internal_use'));
+            if ($rfPurpose !== $requestedUse) {
+                return ['status' => 'ineligible_bounded', 'reason' => "Target RF purpose '{$rfPurpose}' is incompatible with requested use '{$requestedUse}'."];
+            }
         }
 
         if (! is_array($restrictions)) {
@@ -389,9 +520,8 @@ final class StockEligibilityEvaluator
         }
 
         $uses = $restrictions['allowed_uses'] ?? [];
-        $rfUse = $targetRf ? strtolower((string) ($targetRf->purpose ?: 'internal_use')) : strtolower($intendedUse);
-        if (! is_array($uses) || ! in_array($rfUse, $uses, true)) {
-            return ['status' => 'ineligible_bounded', 'reason' => "Bounded lot does not allow use '{$rfUse}'."];
+        if (! is_array($uses) || ! in_array($requestedUse, $uses, true)) {
+            return ['status' => 'ineligible_bounded', 'reason' => "Bounded lot does not allow use '{$requestedUse}'."];
         }
 
         if (($restrictions['effective_from'] ?? null) !== null

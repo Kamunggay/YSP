@@ -3,12 +3,15 @@
 namespace App\Services\Inventory;
 
 use App\Models\ActualIssueLine;
+use App\Models\CatalogueVariant;
 use App\Models\InventoryLot;
 use App\Models\RfReservationAllocation;
 use App\Models\StockHold;
 use App\Models\StockReservation;
 use App\Services\Inventory\Participants\OpenProcurementSupplyProvider;
 use App\Services\Shared\BcMath;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class StockViewQueryService
 {
@@ -208,7 +211,26 @@ class StockViewQueryService
         }
 
         $inboundOpenPoStr = BcMath::str('0');
-        $variantIdsForPo = $variantId ? [$variantId] : $lots->pluck('variant_id')->unique()->values()->all();
+        if ($variantId) {
+            $variantIdsForPo = [$variantId];
+        } else {
+            $poVariantIds = [];
+            if (Schema::hasTable('purchase_orders') && Schema::hasTable('purchase_order_lines')) {
+                $poVariantIds = DB::table('purchase_order_lines')
+                    ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_lines.po_id')
+                    ->where('purchase_orders.chapter_id', $chapterId)
+                    ->whereIn('purchase_orders.status', ['issued', 'partially_received'])
+                    ->whereRaw('purchase_order_lines.outstanding_quantity > 0')
+                    ->distinct()
+                    ->pluck('purchase_order_lines.variant_id')
+                    ->all();
+            }
+            $variantIdsForPo = array_values(array_unique(array_merge(
+                $lots->pluck('variant_id')->all(),
+                CatalogueVariant::where('chapter_id', $chapterId)->pluck('id')->all(),
+                $poVariantIds
+            )));
+        }
         if ($variantIdsForPo !== []) {
             $provider = $this->supplyProvider ?? app(OpenProcurementSupplyProvider::class);
             foreach ($provider->getInboundSourcesForVariants($chapterId, $variantIdsForPo) as $source) {
