@@ -22,6 +22,7 @@ use App\Models\StockHoldHistory;
 use App\Models\StockHoldRange;
 use App\Models\StockReservation;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
+use App\Services\Inventory\Participants\DonationRestrictionSupport;
 use App\Services\Inventory\Participants\PrepareRfDemandChangeParticipant;
 use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\BcMath;
@@ -1243,7 +1244,9 @@ class ReservationService
             ]);
         }
 
-        if (! ($lot->immediately_allocatable ?? true) || LotRestrictionAssignment::where('lot_id', $lot->id)->exists()) {
+        if (! ($lot->immediately_allocatable ?? true)
+            || ! DonationRestrictionSupport::allowsRf($lot->segments ?? [], $rf)
+            || LotRestrictionAssignment::where('lot_id', $lot->id)->exists()) {
             throw new ContractException(409, 'restriction_unsupported', 'restriction unsupported', [
                 'failed_intent_committed' => false,
                 'current' => [

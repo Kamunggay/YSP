@@ -3,7 +3,10 @@
 namespace App\Services\Inventory\Participants;
 
 use App\Http\Requests\AuthInput;
+use App\Models\InternalRf;
+use App\Services\Shared\BcMath;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Throwable;
 
 /**
@@ -158,6 +161,65 @@ final class DonationRestrictionSupport
         sort($expected);
 
         return $keys === $expected;
+    }
+
+    public static function allowsRf(mixed $segments, InternalRf $rf, ?CarbonInterface $at = null): bool
+    {
+        if (! is_array($segments) || $segments === []) {
+            return true;
+        }
+
+        $now = $at ? CarbonImmutable::instance($at)->utc() : CarbonImmutable::now('UTC');
+
+        foreach ($segments as $segment) {
+            if (! is_array($segment)) {
+                continue;
+            }
+            if (isset($segment['quantity']) && BcMath::comp((string) $segment['quantity'], '0') <= 0) {
+                continue;
+            }
+
+            $restrictions = $segment['restrictions'] ?? null;
+            if (! is_array($restrictions)) {
+                continue;
+            }
+
+            $state = $restrictions['state'] ?? 'unrestricted';
+            if ($state === 'unrestricted') {
+                continue;
+            }
+            if ($state === 'uninterpreted') {
+                return false;
+            }
+            if ($state !== 'bounded') {
+                return false;
+            }
+
+            $uses = $restrictions['allowed_uses'] ?? [];
+            $rfUse = strtolower((string) ($rf->purpose ?: 'internal_use'));
+            if (! is_array($uses) || ! in_array($rfUse, $uses, true)) {
+                return false;
+            }
+
+            $unitIds = $restrictions['requesting_unit_ids'] ?? [];
+            if (is_array($unitIds) && $unitIds !== [] && ! in_array($rf->requesting_unit_id, $unitIds, true)) {
+                return false;
+            }
+
+            $eventIds = $restrictions['event_ids'] ?? [];
+            if (is_array($eventIds) && $eventIds !== [] && ($rf->event_id === null || ! in_array($rf->event_id, $eventIds, true))) {
+                return false;
+            }
+
+            if (($restrictions['effective_from'] ?? null) !== null && $now->lt(CarbonImmutable::parse($restrictions['effective_from']))) {
+                return false;
+            }
+            if (($restrictions['effective_until'] ?? null) !== null && $now->gt(CarbonImmutable::parse($restrictions['effective_until']))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static function isUuid(mixed $value): bool
