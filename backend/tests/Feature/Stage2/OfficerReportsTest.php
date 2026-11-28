@@ -109,7 +109,7 @@ class OfficerReportsTest extends TestCase
         ]);
         $purchaseOrders = collect(['issued', 'pending_approval'])->map(fn ($status) => PurchaseOrder::create([
             'chapter_id' => $chapter->id, 'prepared_by' => $officer->id, 'repf_id' => $repf->id, 'status' => $status,
-            'supplier_selection_id' => (string) Str::uuid(), 'supplier' => ['supplier_name' => 'Supplier'],
+            'supplier_selection_id' => (string) Str::uuid(), 'supplier' => ['supplier_name' => str_repeat(' ', 162).'Supplier'],
             'delivery_location' => 'Main stockroom', 'expected_delivery_date' => '2026-11-20', 'revised_expected_delivery_date' => '2026-11-28',
             'payment_and_delivery_terms' => 'On delivery', 'total_amount_php' => '12.50',
             'review_json' => ['submitted_at' => '2026-11-27T16:30:00.000000Z'],
@@ -123,7 +123,8 @@ class OfficerReportsTest extends TestCase
         $history = fn (int $sequence) => Stage2RecordHistory::create([
             'chapter_id' => $chapter->id, 'record_kind' => 'repf', 'record_id' => $repf->id, 'sequence_no' => $sequence,
             'version' => $sequence, 'material_version' => 1, 'is_version_snapshot' => true, 'event_type' => 'submitRepf',
-            'actor_user_id' => $officer->id, 'snapshot_json' => ['status' => 'pending_budget_review'], 'recorded_at' => now('UTC'),
+            'actor_user_id' => $officer->id, 'reason' => str_repeat(' ', 501).'Awaiting review',
+            'snapshot_json' => ['status' => 'pending_budget_review'], 'recorded_at' => now('UTC'),
         ]);
         $history(1);
         $history(2);
@@ -146,7 +147,8 @@ class OfficerReportsTest extends TestCase
         $this->assertSame(2, $exceptions['overdue_po_approval']['overdue_hours']);
         $this->assertSame(3, $exceptions['overdue_po_delivery']['overdue_hours']);
         $this->assertSame('2026-11-28T15:59:59.999999Z', $exceptions['overdue_po_delivery']['due_or_since_at']);
-        $first = $this->get($control)->assertOk()->assertJsonCount(1, 'audit_history')->assertJsonCount(1, 'overdue_exceptions');
+        $first = $this->get($control)->assertOk()->assertJsonCount(1, 'audit_history')->assertJsonCount(1, 'overdue_exceptions')
+            ->assertJsonPath('audit_history.0.reason', 'Awaiting review');
         $cursor = $first->json('page.next_cursor');
         $this->assertIsString($cursor);
         $controlNext = $control.'&cursor='.rawurlencode($cursor);
@@ -158,7 +160,8 @@ class OfficerReportsTest extends TestCase
         $history(3);
         $this->get($controlNext)->assertConflict()->assertJsonPath('error.code', 'snapshot_stale');
 
-        $first = $this->get($procurement)->assertOk()->assertJsonCount(1, 'repf_summary')->assertJsonCount(1, 'purchase_order_summary');
+        $first = $this->get($procurement)->assertOk()->assertJsonCount(1, 'repf_summary')->assertJsonCount(1, 'purchase_order_summary')
+            ->assertJsonPath('purchase_order_summary.0.supplier_name', 'Supplier');
         $procurementNext = $procurement.'&cursor='.rawurlencode($first->json('page.next_cursor'));
         $this->get($procurementNext)->assertOk()->assertJsonCount(0, 'repf_summary')->assertJsonCount(1, 'purchase_order_summary')
             ->assertJsonPath('page.next_cursor', null);

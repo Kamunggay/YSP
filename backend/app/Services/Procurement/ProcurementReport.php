@@ -71,7 +71,7 @@ final class ProcurementReport
 
             return [
                 'po_id' => $order->id, 'po_line_id' => $line->id, 'po_reference' => $order->po_reference,
-                'repf_id' => $order->repf_id, 'status' => $order->status, 'supplier_name' => mb_substr($order->supplier['supplier_name'], 0, 160),
+                'repf_id' => $order->repf_id, 'status' => $order->status, 'supplier_name' => mb_substr(mb_trim($order->supplier['supplier_name']), 0, 160),
                 'linked_demand_canceled' => $line->linked_demand_canceled,
                 'variant_id' => $line->variant_id, 'variant_code' => $variants->get($line->variant_id)->code,
                 'unit_id' => $line->unit_id, 'unit_code' => $line->unit->code, 'quantity_scale' => $line->quantity_scale,

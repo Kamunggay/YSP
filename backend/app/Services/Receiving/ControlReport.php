@@ -58,7 +58,7 @@ final class ControlReport
 
                 return [
                     'da_id' => $da->id, 'da_reference' => $da->reference, 'da_status' => $da->status,
-                    'donor_name' => mb_substr($da->donor_name, 0, 160), 'location_id' => $location,
+                    'donor_name' => mb_substr(mb_trim($da->donor_name), 0, 160), 'location_id' => $location,
                     'item_id' => $variant->item_id, 'variant_id' => $variant->id, 'variant_code' => $variant->code,
                     'unit_id' => $line->unit_id, 'unit_code' => $line->unit->code, 'quantity_scale' => $line->quantity_scale,
                     'declared_quantity' => DonationResource::quantity($line, 'pledged_quantity'),
@@ -216,12 +216,15 @@ final class ControlReport
     {
         $rms = ReceivingReport::where('chapter_id', $chapterId)->where('location_id', $locationId)
             ->get(['id']);
-        $location = CatalogueLocation::where('chapter_id', $chapterId)->findOrFail($locationId);
+        $locations = CatalogueLocation::where('chapter_id', $chapterId)->get();
+        $location = $locations->firstWhere('id', $locationId);
         $poIds = Records::poReceiptLocations($chapterId, $variantIds)->filter(fn ($locations) => $locations->contains($locationId))->keys();
         $orders = PurchaseOrder::where('chapter_id', $chapterId)
             ->whereHas('lines', fn (Builder $lines) => $lines->whereIn('variant_id', $variantIds))
             ->where(fn (Builder $query) => $query->whereIn('id', $poIds)->orWhereIn('delivery_location', [$locationId, $location->name]))
-            ->get(['id', 'repf_id']);
+            ->get(['id', 'repf_id', 'delivery_location'])
+            ->filter(fn ($order) => $poIds->contains($order->id)
+                || Records::deliveryLocation($order->delivery_location, $locations)?->id === $locationId);
         $rfLines = Records::rfLinesAtLocation($chapterId, $locationId);
         $repfs = Repf::where('chapter_id', $chapterId)
             ->whereHas('lines', fn (Builder $lines) => $lines->whereIn('rf_line_id', array_keys($rfLines))->whereIn('variant_id', $variantIds))
@@ -274,7 +277,7 @@ final class ControlReport
             'record_reference' => $quotation ? null : ($snapshot['repf_reference'] ?? $snapshot['po_reference'] ?? $snapshot['rm_reference'] ?? $snapshot['reference'] ?? null),
             'action' => Str::snake($row->event_type), 'actor' => $this->actor($actors, $row->actor_user_id),
             'occurred_at' => RepfResource::instant($row->recorded_at),
-            'reason' => $row->reason === null ? null : mb_substr($row->reason, 0, 500),
+            'reason' => $row->reason === null ? null : mb_substr(mb_trim($row->reason), 0, 500),
         ];
     }
 }
