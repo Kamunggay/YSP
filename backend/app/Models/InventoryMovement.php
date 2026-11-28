@@ -32,6 +32,9 @@ class InventoryMovement extends Model
         'source_rm_id',
         'source_ipc_id',
         'source_ipc_line_id',
+        'rm_line_id',
+        'source_doc_id',
+        'source_line_id',
         'lot_id',
         'rm_reference',
         'rm_material_version',
@@ -39,6 +42,8 @@ class InventoryMovement extends Model
         'ipc_material_version',
         'quantity_scale',
         'accepted_value',
+        'unit_valuation_php',
+        'total_value_php',
         'currency',
         'posted_by',
     ];
